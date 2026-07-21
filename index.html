@@ -88,7 +88,13 @@
       <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="business" style="width:auto" checked> 商務</label>
       <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="first" style="width:auto"> 頭等</label>
     </div>
-    <label>人數</label><input id="f-seats" type="number" min="1" max="9" value="2">
+    <label>人數(幾人到幾人)</label>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select id="f-seats-min" style="flex:1"></select>
+      <span style="color:var(--text2)">到</span>
+      <select id="f-seats-max" style="flex:1"></select>
+      <span style="color:var(--text2)">人</span>
+    </div>
     <label>哩程計畫</label>
     <select id="f-program">
       <option value="ana" selected>ANA 全日空</option><option value="eva">長榮 Infinity</option>
@@ -167,9 +173,11 @@
       var dt=w.dateTo&&w.dateTo!==w.dateFrom?w.dateFrom+" ～ "+w.dateTo:w.dateFrom;
       var srcCls=w.source==="seatsaero"?"src-sa":"src-air";
       var cabTxt=(w.cabins&&w.cabins.length)?w.cabins.map(function(c){return CABIN_LABEL[c]||c;}).join("/"):(w.cabin?(CABIN_LABEL[w.cabin]||w.cabin):"皆可");
+      var mn=w.seatsMin!=null?w.seatsMin:w.seats, mx=w.seatsMax!=null?w.seatsMax:w.seats;
+      var seatTxt=(mn===mx)?(mn+" 人"):(mn+"~"+mx+" 人");
       div.innerHTML='<div class="entry-head"><div>'
         +'<div class="entry-name">'+esc(w.origin)+" → "+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
-        +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+w.seats+" 人 · "+esc(PROGRAM_LABEL[w.program]||w.program)
+        +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+esc(seatTxt)+" · "+esc(PROGRAM_LABEL[w.program]||w.program)
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
         +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")+"</div></div>"
         +'<div class="btn-row"><button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
@@ -191,12 +199,12 @@
     var dFrom=$("f-date-from").value, dTo=$("f-date-to").value;
     if(!dFrom){m.textContent="請選日期";m.className="msg err";return;}
     if(dTo&&dFrom>dTo){m.textContent="起始日不能晚於結束日";m.className="msg err";return;}
-    var seats=parseInt($("f-seats").value,10);
-    if(!seats||seats<1||seats>9){m.textContent="人數 1–9";m.className="msg err";return;}
+    var sMin=parseInt($("f-seats-min").value,10), sMax=parseInt($("f-seats-max").value,10);
+    if(!sMin||!sMax||sMin<1||sMax>9||sMin>sMax){m.textContent="人數範圍要 1–9,且起 ≤ 迄";m.className="msg err";return;}
     var cabins=[].slice.call(document.querySelectorAll(".cab:checked")).map(function(c){return c.value;});
     var btn=$("f-submit"); btn.disabled=true; m.textContent="送出中…"; m.className="msg";
     api("POST","/api/seats/watch",{origin:origin,dest:dest,dateFrom:dFrom,dateTo:dTo||null,
-      cabins:cabins,seats:seats,program:$("f-program").value,
+      cabins:cabins,seatsMin:sMin,seatsMax:sMax,program:$("f-program").value,
       source:$("f-source").value,scanPerDay:parseInt($("f-scan").value,10)},function(e,d){
       btn.disabled=false;
       if(e){m.textContent="失敗："+e;m.className="msg err";return;}
@@ -256,6 +264,11 @@
       google.accounts.id.initialize({client_id:CLIENT_ID,callback:function(resp){try{sessionStorage.setItem(TOKEN_KEY,resp.credential);}catch(e){}showApp();}});
       google.accounts.id.renderButton($("gsi-btn"),{theme:"filled_black",size:"large",text:"signin_with"});
     }
+    // populate passenger-range dropdowns (1–9), default 2 to 2
+    (function(){ var mn=$("f-seats-min"), mx=$("f-seats-max");
+      for(var i=1;i<=9;i++){ var a=document.createElement("option"); a.value=i; a.textContent=i; if(i===2)a.selected=true; mn.appendChild(a);
+        var b=document.createElement("option"); b.value=i; b.textContent=i; if(i===2)b.selected=true; mx.appendChild(b); }
+      mn.addEventListener("change",function(){ if(parseInt(mx.value,10)<parseInt(mn.value,10)) mx.value=mn.value; }); })();
     initGsi(); if(token())showApp();
     $("f-submit").addEventListener("click",submitForm);
     $("test-push").addEventListener("click",function(){
