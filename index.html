@@ -8,140 +8,257 @@
 <style>
   :root {
     --bg:#0d0d10; --card:#17171c; --border:#2a2a33; --text:#ececf1; --text2:#9a9aa8;
-    --accent:#6aa8ff; --ok:#4cc38a; --okbg:#0f2a1e; --dim:#6b6b78; --chip:#22222b;
+    --accent:#6aa8ff; --ok:#4cc38a; --okbg:#0f2a1e; --dim:#6b6b78; --chip:#22222b; --bad:#e5484d;
   }
   * { box-sizing:border-box; }
   body { margin:0; padding:0 12px 60px; background:var(--bg); color:var(--text);
     font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; line-height:1.5;
     max-width:820px; margin-inline:auto; }
   h1 { font-size:1.35rem; margin:20px 0 2px; }
+  h2 { font-size:1.05rem; margin:0 0 8px; }
   .sub { color:var(--text2); font-size:0.85rem; margin:0 0 14px; }
-  .summary { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px; }
-  .stat { background:var(--card); border:1px solid var(--border); border-radius:10px;
-    padding:8px 14px; font-size:0.9rem; }
-  .stat b { font-size:1.15rem; color:var(--accent); }
-  .stat.ok b { color:var(--ok); }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; align-items:center; }
-  .controls label { font-size:0.85rem; color:var(--text2); display:flex; align-items:center; gap:5px; }
-  select { background:var(--bg); color:var(--text); border:1px solid var(--border);
-    border-radius:8px; padding:6px 10px; font-size:0.9rem; }
-  .grp { margin:18px 0 6px; font-size:1.02rem; font-weight:700; display:flex; align-items:center; gap:8px; }
-  .grp .prog { font-size:0.78rem; color:var(--text2); font-weight:400; }
-  table { width:100%; border-collapse:collapse; font-size:0.86rem; }
-  thead th { text-align:left; color:var(--text2); font-weight:600; font-size:0.76rem;
-    padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
-  tbody td { padding:8px; border-bottom:1px solid var(--border); vertical-align:top; }
-  tr.avail { background:var(--okbg); }
-  tr.none td { color:var(--dim); }
-  .badge { display:inline-block; padding:1px 8px; border-radius:99px; font-size:0.74rem; font-weight:700; }
-  .badge.available { background:var(--ok); color:#06281a; }
-  .badge.none { background:var(--chip); color:var(--dim); }
-  .badge.check { background:#3a3320; color:#e0a458; }
-  .rt { color:var(--ok); font-weight:700; }
-  .flt { color:var(--text2); font-size:0.8rem; }
-  .msg { color:var(--text2); padding:24px 4px; text-align:center; }
-  .foot { color:var(--dim); font-size:0.78rem; margin-top:24px; text-align:center; }
-  @media (max-width:560px) {
-    thead { display:none; }
-    table, tbody, tr, td { display:block; width:100%; }
-    tbody tr { border:1px solid var(--border); border-radius:10px; margin:8px 0; padding:4px 2px; }
-    tbody td { border:none; padding:3px 10px; }
-    tbody td::before { content:attr(data-l)"："; color:var(--text2); font-size:0.76rem; }
-    tbody td.main::before { content:""; }
-    tbody td.main { font-weight:700; font-size:0.98rem; padding-top:8px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin:14px 0; }
+  label { display:block; font-size:0.85rem; color:var(--text2); margin:10px 0 4px; }
+  input, select { width:100%; padding:10px; border-radius:9px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:0.95rem; }
+  input[type=date]{ color-scheme:dark; min-height:44px; -webkit-appearance:none; appearance:none; }
+  input:focus, select:focus{ outline:none; border-color:var(--accent); }
+  .row2{ display:flex; gap:10px; } .row2>div{ flex:1; }
+  button{ border:none; border-radius:9px; padding:11px 18px; font-size:0.95rem; cursor:pointer; font-weight:600; }
+  .primary{ background:var(--accent); color:#06131c; width:100%; margin-top:14px; } .primary:disabled{ opacity:.5; }
+  .del{ background:transparent; color:var(--bad); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
+  .pause{ background:transparent; color:var(--text2); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
+  .btn-row{ display:flex; gap:6px; flex-shrink:0; }
+  .msg{ font-size:0.88rem; color:var(--text2); min-height:1.2em; margin-top:8px; } .msg.err{ color:var(--bad); }
+  .hidden{ display:none; }
+  .entry{ border-bottom:1px solid var(--border); padding:10px 0; } .entry:last-child{ border-bottom:none; }
+  .entry-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .entry-name{ font-weight:700; } .entry-meta{ color:var(--text2); font-size:0.84rem; margin-top:2px; }
+  .badge{ display:inline-block; padding:1px 8px; border-radius:99px; font-size:0.74rem; border:1px solid var(--border); color:var(--text2); }
+  .badge.available{ background:var(--ok); color:#06281a; border:none; font-weight:700; } .badge.no_seats{ color:var(--bad); border-color:var(--bad); }
+  .badge.paused{ color:var(--text2); } .badge.pending{ color:var(--accent); border-color:var(--accent); }
+  .src-air{ color:var(--ok); } .src-sa{ color:var(--accent); }
+  /* results table */
+  .summary{ display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 12px; }
+  .stat{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:7px 13px; font-size:0.88rem; }
+  .stat b{ font-size:1.1rem; color:var(--accent); } .stat.ok b{ color:var(--ok); }
+  .controls{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; align-items:center; }
+  .controls label{ font-size:0.82rem; margin:0; display:flex; align-items:center; gap:5px; }
+  .controls select{ width:auto; padding:6px 9px; font-size:0.85rem; }
+  .grp{ margin:16px 0 5px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .grp .prog{ font-size:0.76rem; color:var(--text2); font-weight:400; }
+  table{ width:100%; border-collapse:collapse; font-size:0.85rem; }
+  thead th{ text-align:left; color:var(--text2); font-weight:600; font-size:0.74rem; padding:5px 7px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody td{ padding:7px; border-bottom:1px solid var(--border); vertical-align:top; }
+  tr.avail{ background:var(--okbg); } tr.none td{ color:var(--dim); }
+  .rt{ color:var(--ok); font-weight:700; } .flt{ color:var(--text2); font-size:0.79rem; }
+  .foot{ color:var(--dim); font-size:0.78rem; margin-top:22px; text-align:center; }
+  @media (max-width:560px){
+    thead{ display:none; } table,tbody,tr,td{ display:block; width:100%; }
+    tbody tr{ border:1px solid var(--border); border-radius:10px; margin:8px 0; padding:4px 2px; }
+    tbody td{ border:none; padding:3px 10px; } tbody td::before{ content:attr(data-l)"："; color:var(--text2); font-size:0.76rem; }
+    tbody td.main::before{ content:""; } tbody td.main{ font-weight:700; font-size:0.96rem; padding-top:8px; }
   }
 </style>
 </head>
 <body>
 <h1>✈️ 哩程機位監控</h1>
-<p class="sub" id="sub">載入中…</p>
+<p class="sub">上方登入後新增監控需求;下方是四家官網監控的即時結果</p>
 
-<div class="summary" id="summary"></div>
-<div class="controls">
-  <label>航空
-    <select id="f-air"><option value="">全部</option></select>
-  </label>
-  <label>艙等
-    <select id="f-cabin"><option value="">全部</option></select>
-  </label>
-  <label><input type="checkbox" id="f-availonly"> 只看有位</label>
+<div id="signin-card" class="card">
+  <p>用 Google 登入後管理監控需求(僅限 Tony 本人帳號)</p>
+  <div id="gsi-btn"></div>
 </div>
 
-<div id="list"><p class="msg">載入中…</p></div>
-<p class="foot">資料由 1800 上四家航空官網監控每日兩次更新 · 華航 / ANA / 星宇 / 阿拉斯加</p>
+<div id="app" class="hidden">
+  <div class="card">
+    <h2>➕ 新增監控需求</h2>
+    <div class="row2">
+      <div><label>出發地(IATA,可逗號多個)</label><input id="f-origin" placeholder="例：TPE 或 TPE,KHH" maxlength="30" style="text-transform:uppercase"></div>
+      <div><label>目的地</label><input id="f-dest" placeholder="例：NRT" maxlength="30" style="text-transform:uppercase"></div>
+    </div>
+    <div class="row2">
+      <div><label>日期(起)</label><input id="f-date-from" type="date"></div>
+      <div><label>日期(迄,留空=單日)</label><input id="f-date-to" type="date"></div>
+    </div>
+    <div class="row2">
+      <div><label>艙等</label><select id="f-cabin">
+        <option value="economy">經濟</option><option value="premium">豪華經濟</option>
+        <option value="business" selected>商務</option><option value="first">頭等</option></select></div>
+      <div><label>人數</label><input id="f-seats" type="number" min="1" max="9" value="2"></div>
+    </div>
+    <label>哩程計畫</label>
+    <select id="f-program">
+      <option value="ana" selected>ANA 全日空</option><option value="eva">長榮 Infinity</option>
+      <option value="cal">華航 華夏</option><option value="starlux">星宇 COSMILE</option>
+      <option value="alaska">阿拉斯加 Mileage Plan</option>
+    </select>
+    <div class="row2">
+      <div><label>資料來源</label><select id="f-source">
+        <option value="airline" selected>航空公司官網(較準)</option>
+        <option value="seatsaero">seats.aero(聯盟代理)</option></select></div>
+      <div><label>每日掃描次數</label><select id="f-scan">
+        <option value="1">1 次</option><option value="2" selected>2 次</option>
+        <option value="3">3 次</option><option value="4">4 次</option></select></div>
+    </div>
+    <button id="f-submit" class="primary">送出</button>
+    <p id="f-msg" class="msg"></p>
+  </div>
 
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;">
+      <h2 style="margin:0;">📋 監控需求清單</h2>
+      <button id="test-push" class="pause">🔔 測試推播</button>
+    </div>
+    <p id="push-msg" class="msg" style="margin:0 0 4px;"></p>
+    <div id="watchlist"><p class="msg">載入中…</p></div>
+  </div>
+</div>
+
+<h2 style="margin-top:26px;">🎯 監控結果</h2>
+<p class="sub" id="res-sub">載入中…</p>
+<div class="summary" id="summary"></div>
+<div class="controls">
+  <label>航空 <select id="rf-air"><option value="">全部</option></select></label>
+  <label>艙等 <select id="rf-cabin"><option value="">全部</option></select></label>
+  <label><input type="checkbox" id="rf-availonly"> 只看有位</label>
+</div>
+<div id="results"><p class="msg">載入中…</p></div>
+<p class="foot">官網監控在 1800(camoufox 仿真人)每日定時掃描 · 華航 / ANA / 星宇 / 阿拉斯加</p>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 (function () {
   "use strict";
-  function $(id){ return document.getElementById(id); }
-  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function fmtTime(iso){ if(!iso) return "—"; var d=new Date(iso);
-    return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); }
-  var STATUS={ available:"有位", none:"無位", check:"待確認" };
-  var ALL=[], DATA=null;
+  var CLIENT_ID="481860179039-gb37qsdogd4vgnn2g5umh73jen02avj4.apps.googleusercontent.com";
+  var API="https://claudebot500.tailfcf67f.ts.net", TOKEN_KEY="seatsrooms.token";
+  var CABIN_LABEL={economy:"經濟",premium:"豪經",business:"商務",first:"頭等"};
+  var PROGRAM_LABEL={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"Alaska"};
+  var SOURCE_LABEL={airline:"官網",seatsaero:"seats.aero"};
+  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位"};
+  function $(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function token(){try{return sessionStorage.getItem(TOKEN_KEY);}catch(e){return null;}}
+  function fmtTime(ms){if(!ms)return "—";var d=new Date(ms);return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
 
-  function render(){
-    var air=$("f-air").value, cabin=$("f-cabin").value, availOnly=$("f-availonly").checked;
-    var rows=ALL.filter(function(r){
-      if(air && r.airline!==air) return false;
-      if(cabin && (r.cabin||"").indexOf(cabin)<0) return false;
-      if(availOnly && r.status!=="available") return false;
-      return true;
+  function api(method,path,body,cb){
+    var x=new XMLHttpRequest(); x.open(method,API+path);
+    x.setRequestHeader("Authorization","Bearer "+token());
+    if(body)x.setRequestHeader("Content-Type","application/json"); x.timeout=20000;
+    x.onload=function(){var d=null;try{d=JSON.parse(x.responseText);}catch(e){}
+      if(x.status===401){signOut();return;}
+      cb(x.status>=200&&x.status<300?null:((d&&d.error)||("HTTP "+x.status)),d);};
+    x.onerror=function(){cb("連線失敗(500 主機可能離線)");}; x.ontimeout=function(){cb("連線逾時");};
+    x.send(body?JSON.stringify(body):null);
+  }
+
+  // ---- watchlist (managed) ----
+  function renderWatch(ws){
+    var el=$("watchlist");
+    if(!ws||!ws.length){el.innerHTML='<p class="msg">還沒有監控需求,用上面表單新增。</p>';return;}
+    el.innerHTML="";
+    ws.forEach(function(w){
+      var div=document.createElement("div"); div.className="entry";
+      var paused=w.active===false;
+      var st=paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—");
+      var badge=paused?"paused":esc(w.status||"");
+      var dt=w.dateTo&&w.dateTo!==w.dateFrom?w.dateFrom+" ～ "+w.dateTo:w.dateFrom;
+      var srcCls=w.source==="seatsaero"?"src-sa":"src-air";
+      div.innerHTML='<div class="entry-head"><div>'
+        +'<div class="entry-name">'+esc(w.origin)+" → "+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
+        +'<div class="entry-meta">'+esc(dt)+" · "+esc(CABIN_LABEL[w.cabin]||w.cabin)+" · "+w.seats+" 人 · "+esc(PROGRAM_LABEL[w.program]||w.program)
+        +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
+        +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")+"</div></div>"
+        +'<div class="btn-row"><button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
+      div.querySelector(".pause").addEventListener("click",function(){
+        api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch(d.watches);});});
+      div.querySelector(".del").addEventListener("click",function(){
+        if(!confirm("停止監控 "+w.origin+"→"+w.dest+"？"))return;
+        api("DELETE","/api/seats/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){alert("刪除失敗："+e);return;}renderWatch(d.watches);});});
+      el.appendChild(div);
     });
-    var el=$("list");
-    if(!rows.length){ el.innerHTML='<p class="msg">目前沒有符合條件的項目。</p>'; return; }
-    // group by airline
-    var groups={}, order=[];
-    rows.forEach(function(r){ if(!groups[r.airline]){ groups[r.airline]=[]; order.push(r.airline); } groups[r.airline].push(r); });
+  }
+  function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){ if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;} renderWatch(d.watches); }); }
+
+  function submitForm(){
+    var m=$("f-msg");
+    var origin=$("f-origin").value.trim().toUpperCase(), dest=$("f-dest").value.trim().toUpperCase();
+    var re=/^[A-Z]{3}(,[A-Z]{3})*$/;
+    if(!re.test(origin)||!re.test(dest)){m.textContent="出發地/目的地要 3 碼機場代碼";m.className="msg err";return;}
+    var dFrom=$("f-date-from").value, dTo=$("f-date-to").value;
+    if(!dFrom){m.textContent="請選日期";m.className="msg err";return;}
+    if(dTo&&dFrom>dTo){m.textContent="起始日不能晚於結束日";m.className="msg err";return;}
+    var seats=parseInt($("f-seats").value,10);
+    if(!seats||seats<1||seats>9){m.textContent="人數 1–9";m.className="msg err";return;}
+    var btn=$("f-submit"); btn.disabled=true; m.textContent="送出中…"; m.className="msg";
+    api("POST","/api/seats/watch",{origin:origin,dest:dest,dateFrom:dFrom,dateTo:dTo||null,
+      cabin:$("f-cabin").value,seats:seats,program:$("f-program").value,
+      source:$("f-source").value,scanPerDay:parseInt($("f-scan").value,10)},function(e,d){
+      btn.disabled=false;
+      if(e){m.textContent="失敗："+e;m.className="msg err";return;}
+      m.textContent="✅ 已加入 "+origin+"→"+dest; m.className="msg"; renderWatch(d.watches);
+    });
+  }
+
+  // ---- results table (public) ----
+  var ALL=[];
+  function renderResults(){
+    var air=$("rf-air").value, cabin=$("rf-cabin").value, availOnly=$("rf-availonly").checked;
+    var rows=ALL.filter(function(r){
+      if(air&&r.airline!==air)return false;
+      if(cabin&&(r.cabin||"").indexOf(cabin)<0)return false;
+      if(availOnly&&r.status!=="available")return false; return true;});
+    var el=$("results");
+    if(!rows.length){el.innerHTML='<p class="msg">目前沒有符合條件的項目。</p>';return;}
+    var groups={},order=[]; rows.forEach(function(r){if(!groups[r.airline]){groups[r.airline]=[];order.push(r.airline);}groups[r.airline].push(r);});
     var html="";
     order.forEach(function(a){
-      var g=groups[a], prog=g[0].program||"";
-      var navail=g.filter(function(r){return r.status==="available";}).length;
-      html+='<div class="grp">'+esc(a)+' <span class="prog">'+esc(prog)+' · 有位 '+navail+'/'+g.length+'</span></div>';
+      var g=groups[a],navail=g.filter(function(r){return r.status==="available";}).length;
+      html+='<div class="grp">'+esc(a)+' <span class="prog">'+esc(g[0].program||"")+' · 有位 '+navail+'/'+g.length+'</span></div>';
       html+='<table><thead><tr><th>路線</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th></tr></thead><tbody>';
       g.forEach(function(r){
         var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
-        html+='<tr class="'+cls+'">'
-          +'<td class="main" data-l="路線">'+esc(r.route)+'</td>'
-          +'<td data-l="日期">'+esc(r.date||"")+'</td>'
-          +'<td data-l="艙等">'+esc(r.cabin||"")+'</td>'
-          +'<td data-l="狀態"><span class="badge '+esc(r.status)+'">'+(STATUS[r.status]||r.status)+'</span></td>'
-          +'<td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")+'</td>'
-          +'<td data-l="哩程">'+esc(r.miles||"")+'</td>'
-          +'<td data-l="稅">'+esc(r.tax||"")+'</td>'
-          +'<td data-l="航班" class="flt">'+esc(r.flight||"")+'</td>'
-          +'</tr>';
+        var sb=r.status==="available"?'<span class="badge available">有位</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':'<span class="badge pending">待確認</span>');
+        html+='<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)+'</td><td data-l="日期">'+esc(r.date||"")
+          +'</td><td data-l="艙等">'+esc(r.cabin||"")+'</td><td data-l="狀態">'+sb+'</td><td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")
+          +'</td><td data-l="哩程">'+esc(r.miles||"")+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")+'</td></tr>';
       });
       html+='</tbody></table>';
     });
     el.innerHTML=html;
   }
-
-  function fillFilters(){
-    var airs=[], cabins=[];
-    ALL.forEach(function(r){
-      if(airs.indexOf(r.airline)<0) airs.push(r.airline);
-      (r.cabin||"").split(/[\/、]/).forEach(function(c){ c=c.trim(); if(c && cabins.indexOf(c)<0) cabins.push(c); });
-    });
-    airs.forEach(function(a){ var o=document.createElement("option"); o.value=a; o.textContent=a; $("f-air").appendChild(o); });
-    cabins.forEach(function(c){ var o=document.createElement("option"); o.value=c; o.textContent=c; $("f-cabin").appendChild(o); });
+  function loadResults(){
+    fetch("results.json?t="+Date.now()).then(function(r){return r.json();}).then(function(d){
+      ALL=d.results||[];
+      $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
+      var na=ALL.filter(function(r){return r.status==="available";}).length;
+      $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>';
+      var airs=[],cabins=[];
+      ALL.forEach(function(r){ if(airs.indexOf(r.airline)<0)airs.push(r.airline);
+        (r.cabin||"").split(/[\/、]/).forEach(function(c){c=c.trim();if(c&&cabins.indexOf(c)<0)cabins.push(c);}); });
+      airs.forEach(function(a){var o=document.createElement("option");o.value=a;o.textContent=a;$("rf-air").appendChild(o);});
+      cabins.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent=c;$("rf-cabin").appendChild(o);});
+      renderResults();
+    }).catch(function(e){$("results").innerHTML='<p class="msg">載入 results.json 失敗：'+esc(e.message)+'</p>';});
   }
+  ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
-  function load(){
-    fetch("results.json?t="+Date.now()).then(function(r){ return r.json(); }).then(function(d){
-      DATA=d; ALL=d.results||[];
-      $("sub").textContent="最後更新 "+fmtTime(d.updated)+" · 共 "+ALL.length+" 筆監控";
-      var navail=ALL.filter(function(r){return r.status==="available";}).length;
-      $("summary").innerHTML=
-        '<div class="stat">監控項目 <b>'+ALL.length+'</b></div>'+
-        '<div class="stat ok">有位 <b>'+navail+'</b></div>';
-      fillFilters(); render();
-    }).catch(function(e){
-      $("list").innerHTML='<p class="msg">載入 results.json 失敗：'+esc(e.message)+'</p>';
-    });
-  }
-  ["f-air","f-cabin","f-availonly"].forEach(function(id){ $(id).addEventListener("change", render); });
-  load();
+  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();}
+  function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
+
+  window.addEventListener("load",function(){
+    function initGsi(){
+      if(!window.google||!google.accounts){setTimeout(initGsi,200);return;}
+      google.accounts.id.initialize({client_id:CLIENT_ID,callback:function(resp){try{sessionStorage.setItem(TOKEN_KEY,resp.credential);}catch(e){}showApp();}});
+      google.accounts.id.renderButton($("gsi-btn"),{theme:"filled_black",size:"large",text:"signin_with"});
+    }
+    initGsi(); if(token())showApp();
+    $("f-submit").addEventListener("click",submitForm);
+    $("test-push").addEventListener("click",function(){
+      var m=$("push-msg"); m.textContent="發送中…"; m.className="msg";
+      api("POST","/api/seats/test-push",{},function(e){ if(e){m.textContent="推播失敗："+e;m.className="msg err";return;} m.textContent="✅ 已發送,看 @seatsrroomsbot"; });});
+    loadResults();
+  });
 })();
 </script>
 </body>
