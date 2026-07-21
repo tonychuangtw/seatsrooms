@@ -81,12 +81,14 @@
       <div><label>日期(起)</label><input id="f-date-from" type="date"></div>
       <div><label>日期(迄,留空=單日)</label><input id="f-date-to" type="date"></div>
     </div>
-    <div class="row2">
-      <div><label>艙等</label><select id="f-cabin">
-        <option value="economy">經濟</option><option value="premium">豪華經濟</option>
-        <option value="business" selected>商務</option><option value="first">頭等</option></select></div>
-      <div><label>人數</label><input id="f-seats" type="number" min="1" max="9" value="2"></div>
+    <label>艙等(可複選,不選=皆可)</label>
+    <div id="f-cabins" style="display:flex;gap:14px;flex-wrap:wrap;padding:4px 0 2px;">
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="economy" style="width:auto"> 經濟</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="premium" style="width:auto"> 豪華經濟</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="business" style="width:auto" checked> 商務</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="first" style="width:auto"> 頭等</label>
     </div>
+    <label>人數</label><input id="f-seats" type="number" min="1" max="9" value="2">
     <label>哩程計畫</label>
     <select id="f-program">
       <option value="ana" selected>ANA 全日空</option><option value="eva">長榮 Infinity</option>
@@ -164,9 +166,10 @@
       var badge=paused?"paused":esc(w.status||"");
       var dt=w.dateTo&&w.dateTo!==w.dateFrom?w.dateFrom+" ～ "+w.dateTo:w.dateFrom;
       var srcCls=w.source==="seatsaero"?"src-sa":"src-air";
+      var cabTxt=(w.cabins&&w.cabins.length)?w.cabins.map(function(c){return CABIN_LABEL[c]||c;}).join("/"):(w.cabin?(CABIN_LABEL[w.cabin]||w.cabin):"皆可");
       div.innerHTML='<div class="entry-head"><div>'
         +'<div class="entry-name">'+esc(w.origin)+" → "+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
-        +'<div class="entry-meta">'+esc(dt)+" · "+esc(CABIN_LABEL[w.cabin]||w.cabin)+" · "+w.seats+" 人 · "+esc(PROGRAM_LABEL[w.program]||w.program)
+        +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+w.seats+" 人 · "+esc(PROGRAM_LABEL[w.program]||w.program)
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
         +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")+"</div></div>"
         +'<div class="btn-row"><button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
@@ -190,9 +193,10 @@
     if(dTo&&dFrom>dTo){m.textContent="起始日不能晚於結束日";m.className="msg err";return;}
     var seats=parseInt($("f-seats").value,10);
     if(!seats||seats<1||seats>9){m.textContent="人數 1–9";m.className="msg err";return;}
+    var cabins=[].slice.call(document.querySelectorAll(".cab:checked")).map(function(c){return c.value;});
     var btn=$("f-submit"); btn.disabled=true; m.textContent="送出中…"; m.className="msg";
     api("POST","/api/seats/watch",{origin:origin,dest:dest,dateFrom:dFrom,dateTo:dTo||null,
-      cabin:$("f-cabin").value,seats:seats,program:$("f-program").value,
+      cabins:cabins,seats:seats,program:$("f-program").value,
       source:$("f-source").value,scanPerDay:parseInt($("f-scan").value,10)},function(e,d){
       btn.disabled=false;
       if(e){m.textContent="失敗："+e;m.className="msg err";return;}
@@ -209,7 +213,7 @@
       if(cabin&&(r.cabin||"").indexOf(cabin)<0)return false;
       if(availOnly&&r.status!=="available")return false; return true;});
     var el=$("results");
-    if(!rows.length){el.innerHTML='<p class="msg">目前沒有符合條件的項目。</p>';return;}
+    if(!rows.length){el.innerHTML=ALL.length?'<p class="msg">目前沒有符合條件的項目。</p>':'<p class="msg">還沒有監控結果 —— 上方登入後用表單新增需求,掃描後結果會顯示在這裡。</p>';return;}
     var groups={},order=[]; rows.forEach(function(r){if(!groups[r.airline]){groups[r.airline]=[];order.push(r.airline);}groups[r.airline].push(r);});
     var html="";
     order.forEach(function(a){
