@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>✈️ 哩程機位監控</title>
+<meta name="theme-color" content="#0d0d10">
+<style>
+  :root {
+    --bg: #0d0d10; --card: #17171c; --border: #2a2a33; --text: #ececf1;
+    --text2: #9a9aa8; --accent: #6aa8ff; --ok: #4cc38a; --bad: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 16px 60px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.6; max-width: 640px; margin-inline: auto;
+  }
+  h1 { font-size: 1.4rem; margin: 24px 0 4px; }
+  .sub { color: var(--text2); font-size: 0.9rem; margin: 0 0 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; margin: 14px 0;
+  }
+  label { display: block; font-size: 0.9rem; color: var(--text2); margin: 12px 0 4px; }
+  input, select {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 1rem;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  input[type="date"] {
+    color-scheme: dark; min-height: 48px; -webkit-appearance: none; appearance: none;
+  }
+  .row2 { display: flex; gap: 10px; }
+  .row2 > div { flex: 1; }
+  button {
+    border: none; border-radius: 10px; padding: 12px 20px; font-size: 1rem;
+    cursor: pointer; font-weight: 600;
+  }
+  .primary { background: var(--accent); color: #06131c; width: 100%; margin-top: 16px; }
+  .primary:disabled { opacity: 0.5; }
+  .del {
+    background: transparent; color: var(--bad); border: 1px solid var(--border);
+    padding: 6px 12px; font-size: 0.85rem;
+  }
+  .pause {
+    background: transparent; color: var(--text2); border: 1px solid var(--border);
+    padding: 6px 12px; font-size: 0.85rem;
+  }
+  .btn-row { display: flex; gap: 6px; flex-shrink: 0; }
+  .ghost {
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
+    padding: 8px 14px; font-size: 0.88rem;
+  }
+  .avail { color: var(--ok); font-size: 0.88rem; margin-top: 4px; white-space: pre-line; }
+  details.hist { margin-top: 6px; }
+  details.hist summary { cursor: pointer; color: var(--text2); font-size: 0.85rem; }
+  .hist-row { font-size: 0.82rem; color: var(--text2); padding: 2px 0 2px 12px; }
+  .badge.paused { color: var(--text2); border-color: var(--border); }
+  .entry { border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .entry:last-child { border-bottom: none; }
+  .entry-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .entry-name { font-weight: 700; font-size: 1.05rem; }
+  .entry-meta { color: var(--text2); font-size: 0.88rem; margin-top: 2px; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 99px;
+    font-size: 0.78rem; border: 1px solid var(--border); color: var(--text2);
+  }
+  .badge.available { background: var(--ok); color: #06281a; border: none; font-weight: 700; }
+  .badge.no_seats { color: var(--bad); border-color: var(--bad); }
+  .badge.pending { color: var(--accent); border-color: var(--accent); }
+  .msg { font-size: 0.9rem; color: var(--text2); min-height: 1.4em; margin-top: 8px; }
+  .msg.err { color: var(--bad); }
+  .hidden { display: none; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<h1>✈️ 哩程機位監控</h1>
+<p class="sub">seats.aero + 航空公司官網雙引擎 — claudebot500 定時掃描，無位→有位推播 Telegram</p>
+
+<div id="signin-card" class="card">
+  <p>用 Google 登入後管理監控清單（僅限 Tony 本人帳號）</p>
+  <div id="gsi-btn"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="card">
+    <h2 style="font-size:1.1rem;margin:0 0 4px;">➕ 新增監控</h2>
+    <div class="row2">
+      <div>
+        <label for="f-origin">出發地（IATA，可逗號多個）</label>
+        <input id="f-origin" placeholder="例：TPE 或 TPE,KHH" maxlength="30" style="text-transform:uppercase">
+      </div>
+      <div>
+        <label for="f-dest">目的地</label>
+        <input id="f-dest" placeholder="例：NRT 或 NRT,HND" maxlength="30" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="f-date-from">日期（起）</label>
+        <input id="f-date-from" type="date">
+      </div>
+      <div>
+        <label for="f-date-to">日期（迄，留空=單日）</label>
+        <input id="f-date-to" type="date">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="f-cabin">艙等</label>
+        <select id="f-cabin">
+          <option value="economy">經濟</option>
+          <option value="premium">豪華經濟</option>
+          <option value="business" selected>商務</option>
+          <option value="first">頭等</option>
+        </select>
+      </div>
+      <div>
+        <label for="f-seats">人數</label>
+        <input id="f-seats" type="number" min="1" max="9" value="2">
+      </div>
+    </div>
+    <label for="f-program">哩程計畫</label>
+    <select id="f-program">
+      <option value="ana" selected>ANA 全日空 Mileage Club</option>
+      <option value="eva">長榮 Infinity MileageLands</option>
+      <option value="cal">華航 華夏會員</option>
+      <option value="starlux">星宇 COSMILE</option>
+      <option value="alaska">阿拉斯加 Mileage Plan</option>
+    </select>
+    <button id="f-submit" class="primary">送出</button>
+    <p id="f-msg" class="msg"></p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;">
+      <h2 style="font-size:1.1rem;margin:0;">📋 目前監控中</h2>
+      <button id="test-push" class="ghost">🔔 測試推播</button>
+    </div>
+    <p id="push-msg" class="msg" style="margin:0 0 4px;"></p>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+(function () {
+  "use strict";
+  var CLIENT_ID = "481860179039-gb37qsdogd4vgnn2g5umh73jen02avj4.apps.googleusercontent.com";
+  var API = "https://claudebot500.tailfcf67f.ts.net";
+  var TOKEN_KEY = "seatsrooms.token";
+  var STATUS_LABEL = {
+    pending: "等待首查", no_seats: "無位", available: "🎉 有位！"
+  };
+  var CABIN_LABEL = { economy: "經濟", premium: "豪經", business: "商務", first: "頭等" };
+  var PROGRAM_LABEL = {
+    ana: "ANA", eva: "長榮", cal: "華航", starlux: "星宇", alaska: "Alaska"
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function token() {
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
+  }
+
+  function api(method, path, body, cb) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(method, API + path);
+    xhr.setRequestHeader("Authorization", "Bearer " + token());
+    if (body) xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.timeout = 20000;
+    xhr.onload = function () {
+      var data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (e) {}
+      if (xhr.status === 401) { signOut(); return; }
+      cb(xhr.status >= 200 && xhr.status < 300 ? null : ((data && data.error) || ("HTTP " + xhr.status)), data);
+    };
+    xhr.onerror = function () { cb("連線失敗（500 主機可能離線）"); };
+    xhr.ontimeout = function () { cb("連線逾時"); };
+    xhr.send(body ? JSON.stringify(body) : null);
+  }
+
+  function fmtDate(ms) {
+    if (!ms) return "—";
+    var d = new Date(ms);
+    return (d.getMonth() + 1) + "/" + d.getDate() + " " +
+      d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function renderList(watches) {
+    var el = $("list");
+    if (!watches || !watches.length) {
+      el.innerHTML = '<p class="msg">還沒有監控項目，用上面的表單新增。</p>';
+      return;
+    }
+    el.innerHTML = "";
+    watches.forEach(function (w) {
+      var div = document.createElement("div");
+      div.className = "entry";
+      var paused = w.active === false;
+      var st = paused ? "⏸ 暫停中" : (STATUS_LABEL[w.status] || w.status || "—");
+      var badgeCls = paused ? "paused" : esc(w.status || "");
+      var dateTxt = w.dateFrom === w.dateTo || !w.dateTo ? w.dateFrom : w.dateFrom + " ～ " + w.dateTo;
+      var availHtml = "";
+      if (!paused && w.status === "available" && w.availability && w.availability.length) {
+        availHtml = '<div class="avail">' + w.availability.map(esc).join("\n") + "</div>";
+      }
+      var histHtml = "";
+      if (w.history && w.history.length) {
+        histHtml = '<details class="hist"><summary>查核紀錄（' + w.history.length + '）</summary>' +
+          w.history.slice().reverse().map(function (h) {
+            return '<div class="hist-row">' + fmtDate(h.t) + " — " + esc(STATUS_LABEL[h.status] || h.status || "") +
+              (h.note ? "：" + esc(h.note) : "") + "</div>";
+          }).join("") + "</details>";
+      }
+      div.innerHTML =
+        '<div class="entry-head"><div>' +
+        '<div class="entry-name">' + esc(w.origin) + ' → ' + esc(w.dest) +
+        ' <span class="badge ' + badgeCls + '">' + esc(st) + "</span></div>" +
+        '<div class="entry-meta">' + esc(dateTxt) + " · " + esc(CABIN_LABEL[w.cabin] || w.cabin) +
+        " · " + w.seats + " 人 · " + esc(PROGRAM_LABEL[w.program] || w.program) +
+        "<br>加入 " + fmtDate(w.added) + " · 上次掃描 " + fmtDate(w.lastChecked) +
+        (w.note ? "<br>" + esc(w.note) : "") +
+        "</div>" + availHtml + histHtml + "</div>" +
+        '<div class="btn-row">' +
+        '<button class="pause">' + (paused ? "▶ 恢復" : "⏸ 暫停") + "</button>" +
+        '<button class="del">刪除</button></div></div>';
+      div.querySelector(".pause").addEventListener("click", function () {
+        api("PATCH", "/api/seats/watch/" + encodeURIComponent(w.id), { active: paused }, function (err, data) {
+          if (err) { alert("更新失敗：" + err); return; }
+          renderList(data.watches);
+        });
+      });
+      div.querySelector(".del").addEventListener("click", function () {
+        if (!confirm("停止監控 " + w.origin + "→" + w.dest + "？")) return;
+        api("DELETE", "/api/seats/watch/" + encodeURIComponent(w.id), null, function (err, data) {
+          if (err) { alert("刪除失敗：" + err); return; }
+          renderList(data.watches);
+        });
+      });
+      el.appendChild(div);
+    });
+  }
+
+  function refresh() {
+    api("GET", "/api/seats/watch", null, function (err, data) {
+      if (err) { $("list").innerHTML = '<p class="msg err">載入失敗：' + esc(err) + "</p>"; return; }
+      renderList(data.watches);
+    });
+  }
+
+  function submitForm() {
+    var msg = $("f-msg");
+    var origin = $("f-origin").value.trim().toUpperCase();
+    var dest = $("f-dest").value.trim().toUpperCase();
+    var iataRe = /^[A-Z]{3}(,[A-Z]{3})*$/;
+    if (!iataRe.test(origin) || !iataRe.test(dest)) {
+      msg.textContent = "出發地/目的地要填 3 碼機場代碼（可逗號分隔多個）"; msg.className = "msg err"; return;
+    }
+    var dFrom = $("f-date-from").value, dTo = $("f-date-to").value;
+    if (!dFrom) { msg.textContent = "請選日期"; msg.className = "msg err"; return; }
+    if (dTo && dFrom > dTo) { msg.textContent = "起始日期不能晚於結束日期"; msg.className = "msg err"; return; }
+    var seats = parseInt($("f-seats").value, 10);
+    if (!seats || seats < 1 || seats > 9) { msg.textContent = "人數要 1–9"; msg.className = "msg err"; return; }
+    var btn = $("f-submit");
+    btn.disabled = true;
+    msg.textContent = "送出中…"; msg.className = "msg";
+    api("POST", "/api/seats/watch", {
+      origin: origin, dest: dest, dateFrom: dFrom, dateTo: dTo || null,
+      cabin: $("f-cabin").value, seats: seats, program: $("f-program").value
+    }, function (err, data) {
+      btn.disabled = false;
+      if (err) { msg.textContent = "失敗：" + err; msg.className = "msg err"; return; }
+      msg.textContent = "✅ 已加入 " + origin + "→" + dest + " — 下一輪掃描就會開始查";
+      msg.className = "msg";
+      renderList(data.watches);
+    });
+  }
+
+  function showApp() {
+    $("signin-card").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    refresh();
+  }
+  function signOut() {
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    $("app").classList.add("hidden");
+    $("signin-card").classList.remove("hidden");
+  }
+
+  window.addEventListener("load", function () {
+    function initGsi() {
+      if (!window.google || !google.accounts) { setTimeout(initGsi, 200); return; }
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: function (resp) {
+          try { sessionStorage.setItem(TOKEN_KEY, resp.credential); } catch (e) {}
+          showApp();
+        }
+      });
+      google.accounts.id.renderButton($("gsi-btn"), { theme: "filled_black", size: "large", text: "signin_with" });
+    }
+    initGsi();
+    if (token()) showApp();
+    $("f-submit").addEventListener("click", submitForm);
+    $("test-push").addEventListener("click", function () {
+      var m = $("push-msg");
+      m.textContent = "發送中…"; m.className = "msg";
+      api("POST", "/api/seats/test-push", {}, function (err) {
+        if (err) { m.textContent = "推播失敗：" + err; m.className = "msg err"; return; }
+        m.textContent = "✅ 已發送，看看 @seatsrroomsbot 的 Telegram";
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
