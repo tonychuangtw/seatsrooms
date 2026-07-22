@@ -1,6 +1,6 @@
 {
-  "updated": "2026-07-22T01:55:07.608Z",
-  "count": 46,
+  "updated": "2026-07-22T02:18:01.886Z",
+  "count": 48,
   "results": [
     {
       "airline": "ANA",
@@ -142,7 +142,7 @@
       "cabin": "Premium",
       "status": "available",
       "avail": "有位",
-      "miles": "50k",
+      "miles": "100k",
       "tax": "$99",
       "flight": "JX 236, JX 2"
     },
@@ -275,7 +275,7 @@
       "status": "available",
       "avail": "有位",
       "miles": "175k",
-      "tax": "$108",
+      "tax": "$99",
       "flight": "JX 234, JX 2"
     },
     {
@@ -541,6 +541,30 @@
       "miles": "42.5k",
       "tax": "$93",
       "flight": "JL 26, JL 16"
+    },
+    {
+      "airline": "阿拉斯加 Alaska",
+      "program": "Mileage Plan",
+      "route": "HKG-LAX",
+      "date": "2027-05-22",
+      "cabin": "Main",
+      "status": "available",
+      "avail": "有位",
+      "miles": "65k",
+      "tax": "$130",
+      "flight": "QR 815, QR 739"
+    },
+    {
+      "airline": "阿拉斯加 Alaska",
+      "program": "Mileage Plan",
+      "route": "HKG-LAX",
+      "date": "2027-05-22",
+      "cabin": "Business",
+      "status": "available",
+      "avail": "有位",
+      "miles": "255k",
+      "tax": "$133",
+      "flight": "QR 815, QR 739"
     },
     {
       "airline": "星宇 STARLUX",
