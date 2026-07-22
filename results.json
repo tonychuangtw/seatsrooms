@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-22T01:17:37.552Z",
+  "updated": "2026-07-22T01:51:20.109Z",
   "count": 46,
   "results": [
     {
@@ -548,8 +548,8 @@
       "route": "HKG→LAX",
       "date": "2027-05-20",
       "cabin": "商務",
-      "status": "check",
-      "avail": "等待首掃",
+      "status": "none",
+      "avail": "—",
       "miles": "",
       "tax": "",
       "flight": "",
