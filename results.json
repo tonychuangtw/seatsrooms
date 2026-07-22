@@ -1,7 +1,31 @@
 {
-  "updated": "2026-07-22T00:38:21.555Z",
-  "count": 43,
+  "updated": "2026-07-22T01:17:37.552Z",
+  "count": 46,
   "results": [
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH 07-12~07-15",
+      "date": "去程",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH 07-12~07-15",
+      "date": "去程",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
     {
       "airline": "阿拉斯加 Alaska",
       "program": "Mileage Plan",
@@ -517,6 +541,19 @@
       "miles": "42.5k",
       "tax": "$93",
       "flight": "JL 26, JL 16"
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-20",
+      "cabin": "商務",
+      "status": "check",
+      "avail": "等待首掃",
+      "miles": "",
+      "tax": "",
+      "flight": "",
+      "note": "星宇官網結果目前只判有無航班，明細待強化"
     }
   ]
 }
