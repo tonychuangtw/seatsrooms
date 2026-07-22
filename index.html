@@ -132,7 +132,7 @@
   <label><input type="checkbox" id="rf-availonly"> 只看有位</label>
 </div>
 <div id="results"><p class="msg">載入中…</p></div>
-<p class="foot">官網監控在 1800(camoufox 仿真人)每日定時掃描 · 華航 / ANA / 星宇 / 阿拉斯加</p>
+<p class="foot">官網監控在 1800(camoufox 仿真人)定時掃描 · 結果每 30 分自動彙整更新 · 頁面每 5 分自動刷新</p>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
@@ -248,11 +248,19 @@
       var airs=[],cabins=[];
       ALL.forEach(function(r){ if(airs.indexOf(r.airline)<0)airs.push(r.airline);
         (r.cabin||"").split(/[\/、]/).forEach(function(c){c=c.trim();if(c&&cabins.indexOf(c)<0)cabins.push(c);}); });
-      airs.forEach(function(a){var o=document.createElement("option");o.value=a;o.textContent=a;$("rf-air").appendChild(o);});
-      cabins.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent=c;$("rf-cabin").appendChild(o);});
+      rebuildFilter("rf-air",airs); rebuildFilter("rf-cabin",cabins);
       renderResults();
     }).catch(function(e){$("results").innerHTML='<p class="msg">載入 results.json 失敗：'+esc(e.message)+'</p>';});
   }
+  function rebuildFilter(id,vals){
+    var sel=$(id), keep=sel.value;
+    while(sel.options.length>1)sel.remove(1);
+    vals.forEach(function(v){var o=document.createElement("option");o.value=v;o.textContent=v;sel.appendChild(o);});
+    if(keep&&vals.indexOf(keep)>=0)sel.value=keep;
+  }
+  // 自動刷新：每 5 分鐘重抓 results.json；切回分頁時也立刻抓
+  setInterval(loadResults,5*60*1000);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)loadResults();});
   ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
   function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();}
