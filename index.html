@@ -143,7 +143,7 @@
   var CABIN_LABEL={economy:"經濟",premium:"豪經",business:"商務",first:"頭等"};
   var PROGRAM_LABEL={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"Alaska"};
   var SOURCE_LABEL={airline:"官網",seatsaero:"seats.aero"};
-  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位"};
+  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位",check:"🟡 官網有航班(待確認)"};
   function $(id){return document.getElementById(id);}
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
   function token(){try{return sessionStorage.getItem(TOKEN_KEY);}catch(e){return null;}}
@@ -230,7 +230,7 @@
       html+='<table><thead><tr><th>路線</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th></tr></thead><tbody>';
       g.forEach(function(r){
         var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
-        var sb=r.status==="available"?'<span class="badge available">有位</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':'<span class="badge pending">待確認</span>');
+        var sb=r.status==="available"?'<span class="badge available">有位</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending">待確認</span>'));
         html+='<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)+'</td><td data-l="日期">'+esc(r.date||"")
           +'</td><td data-l="艙等">'+esc(r.cabin||"")+'</td><td data-l="狀態">'+sb+'</td><td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")
           +'</td><td data-l="哩程">'+esc(r.miles||"")+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")+'</td></tr>';
