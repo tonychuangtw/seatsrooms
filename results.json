@@ -1,6 +1,6 @@
 {
-  "updated": "2026-07-24T02:47:22.981Z",
-  "count": 12,
+  "updated": "2026-07-24T03:38:19.048Z",
+  "count": 19,
   "results": [
     {
       "airline": "華航 CAL",
@@ -101,11 +101,11 @@
     {
       "airline": "ANA",
       "program": "Mileage Club",
-      "route": "CTS→KHH 07-12~07-15",
-      "date": "去程",
+      "route": "CTS→KHH",
+      "date": "2027-07-12",
       "cabin": "經濟",
       "status": "available",
-      "avail": "2027-07-12,2027-07-13",
+      "avail": "有位",
       "miles": "",
       "tax": "",
       "flight": ""
@@ -113,9 +113,105 @@
     {
       "airline": "ANA",
       "program": "Mileage Club",
-      "route": "CTS→KHH 07-12~07-15",
-      "date": "去程",
+      "route": "CTS→KHH",
+      "date": "2027-07-13",
+      "cabin": "經濟",
+      "status": "available",
+      "avail": "有位",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-07-14",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-07-15",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-07-12",
       "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-07-13",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-07-14",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-07-15",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "阿拉斯加 Alaska",
+      "program": "Mileage Plan",
+      "route": "ICN→TPE",
+      "date": "2026-12-22",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "阿拉斯加 Alaska",
+      "program": "Mileage Plan",
+      "route": "ICN→TPE",
+      "date": "2026-12-23",
+      "cabin": "經濟/商務",
       "status": "none",
       "avail": "—",
       "miles": "",
@@ -134,18 +230,6 @@
       "tax": "",
       "flight": "",
       "note": "星宇官網結果目前只判有無航班，明細待強化"
-    },
-    {
-      "airline": "阿拉斯加 Alaska",
-      "program": "Mileage Plan",
-      "route": "ICN→TPE",
-      "date": "2026-12-22 ~ 2026-12-23",
-      "cabin": "經濟/商務",
-      "status": "none",
-      "avail": "—",
-      "miles": "",
-      "tax": "",
-      "flight": ""
     }
   ]
 }
