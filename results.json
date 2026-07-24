@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T12:48:22.088Z",
+  "updated": "2026-07-24T14:17:58.954Z",
   "count": 22,
   "results": [
     {
@@ -226,7 +226,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "",
+      "miles": "70,262",
       "tax": "",
       "flight": ""
     },
@@ -238,7 +238,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "",
+      "miles": "70,262",
       "tax": "",
       "flight": ""
     },
@@ -250,7 +250,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "",
+      "miles": "70,262",
       "tax": "",
       "flight": ""
     },
@@ -262,7 +262,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "",
+      "miles": "70,262",
       "tax": "",
       "flight": ""
     }
