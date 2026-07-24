@@ -1,5 +1,151 @@
 {
-  "updated": "2026-07-24T02:18:07.241Z",
-  "count": 0,
-  "results": []
+  "updated": "2026-07-24T02:47:22.981Z",
+  "count": 12,
+  "results": [
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-12",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-13",
+      "cabin": "經濟",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "17,500",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-14",
+      "cabin": "經濟",
+      "status": "available",
+      "avail": "1 位",
+      "miles": "17,500",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-15",
+      "cabin": "經濟",
+      "status": "available",
+      "avail": "5 位",
+      "miles": "17,500",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-12",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-13",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "1 位",
+      "miles": "30,000",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-14",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-07-15",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH 07-12~07-15",
+      "date": "去程",
+      "cabin": "經濟",
+      "status": "available",
+      "avail": "2027-07-12,2027-07-13",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH 07-12~07-15",
+      "date": "去程",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-20",
+      "cabin": "商務",
+      "status": "check",
+      "avail": "有航班(官網確認)",
+      "miles": "",
+      "tax": "",
+      "flight": "",
+      "note": "星宇官網結果目前只判有無航班，明細待強化"
+    },
+    {
+      "airline": "阿拉斯加 Alaska",
+      "program": "Mileage Plan",
+      "route": "ICN→TPE",
+      "date": "2026-12-22 ~ 2026-12-23",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    }
+  ]
 }
