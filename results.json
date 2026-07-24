@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T14:17:58.954Z",
+  "updated": "2026-07-24T14:40:12.597Z",
   "count": 22,
   "results": [
     {
@@ -128,9 +128,9 @@
       "route": "CTS→KHH",
       "date": "2027-07-14",
       "cabin": "經濟",
-      "status": "none",
-      "avail": "—",
-      "miles": "",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "10,000",
       "tax": "",
       "flight": ""
     },
@@ -226,7 +226,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "70,262",
+      "miles": "70,262（2人來回）",
       "tax": "",
       "flight": ""
     },
@@ -238,7 +238,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "70,262",
+      "miles": "70,262（2人來回）",
       "tax": "",
       "flight": ""
     },
@@ -250,7 +250,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "70,262",
+      "miles": "70,262（2人來回）",
       "tax": "",
       "flight": ""
     },
@@ -262,7 +262,7 @@
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
-      "miles": "70,262",
+      "miles": "70,262（2人來回）",
       "tax": "",
       "flight": ""
     }
