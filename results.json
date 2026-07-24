@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T14:40:12.597Z",
+  "updated": "2026-07-24T14:47:52.324Z",
   "count": 22,
   "results": [
     {
@@ -128,9 +128,9 @@
       "route": "CTS→KHH",
       "date": "2027-07-14",
       "cabin": "經濟",
-      "status": "available",
-      "avail": "2 位",
-      "miles": "10,000",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
       "tax": "",
       "flight": ""
     },
