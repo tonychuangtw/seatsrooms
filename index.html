@@ -185,15 +185,16 @@
         +'<div class="btn-row">'
         +(paused?'':(w.source==="seatsaero"
           ?'<button class="scan" title="立刻掃一次這條需求（seats.aero），約 1 分鐘後狀態更新">⚡ 立即掃</button>'
-          :'<button class="scan" disabled title="官網來源由 1800 排程掃描，暫不支援即時觸發">⚡ 立即掃</button>'))
+          :'<button class="scan" title="觸發 1800 立刻掃官網（同計畫的需求一起掃），結果約 10-30 分鐘更新，有位會推 TG">⚡ 立即掃</button>'))
         +'<button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
       var sb=div.querySelector(".scan");
-      if(sb&&!sb.disabled)sb.addEventListener("click",function(){
+      if(sb)sb.addEventListener("click",function(){
         sb.disabled=true; sb.textContent="⏳ 掃描中…";
-        api("POST","/api/seats/scan/"+encodeURIComponent(w.id),{},function(e){
+        api("POST","/api/seats/scan/"+encodeURIComponent(w.id),{},function(e,d){
           if(e){alert("觸發失敗："+e);sb.disabled=false;sb.textContent="⚡ 立即掃";return;}
           sb.textContent="✅ 已觸發";
-          setTimeout(refreshWatch,30000); setTimeout(refreshWatch,75000);
+          if(d&&d.mode==="airline"){ setTimeout(refreshWatch,660000); }
+          else { setTimeout(refreshWatch,30000); setTimeout(refreshWatch,75000); }
         });});
       div.querySelector(".pause").addEventListener("click",function(){
         api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch(d.watches);});});
