@@ -125,7 +125,7 @@
   </div>
 </div>
 
-<h2 style="margin-top:26px;">🎯 監控結果</h2>
+<h2 style="margin-top:26px;">🎯 監控結果 <button id="refresh-btn" class="pause" style="vertical-align:middle;margin-left:8px;">🔄 立即刷新</button></h2>
 <p class="sub" id="res-sub">載入中…</p>
 <div class="summary" id="summary"></div>
 <div class="controls">
@@ -276,6 +276,17 @@
   // 自動刷新：每 5 分鐘重抓 results.json；切回分頁時也立刻抓
   setInterval(loadResults,5*60*1000);
   document.addEventListener("visibilitychange",function(){if(!document.hidden)loadResults();});
+  // 🔄 立即刷新：叫後端重新彙整（拉 1800 最新掃描 state），完成後重抓 results.json
+  $("refresh-btn").addEventListener("click",function(){
+    var b=$("refresh-btn"); b.disabled=true; b.textContent="🔄 刷新中…";
+    fetch(API+"/api/seats/refresh",{method:"POST"}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+      .then(function(x){
+        if(!x.ok){$("res-sub").textContent=x.d&&x.d.error?x.d.error:"刷新失敗";return;}
+        loadResults();
+      })
+      .catch(function(){$("res-sub").textContent="刷新失敗：連不到後端";})
+      .finally(function(){b.disabled=false;b.textContent="🔄 立即刷新";});
+  });
   ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
   function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();}
