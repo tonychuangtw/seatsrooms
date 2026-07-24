@@ -1,6 +1,6 @@
 {
-  "updated": "2026-07-24T03:38:19.048Z",
-  "count": 19,
+  "updated": "2026-07-24T04:18:20.070Z",
+  "count": 22,
   "results": [
     {
       "airline": "華航 CAL",
@@ -105,7 +105,7 @@
       "date": "2027-07-12",
       "cabin": "經濟",
       "status": "available",
-      "avail": "有位",
+      "avail": "2 位",
       "miles": "",
       "tax": "",
       "flight": ""
@@ -117,7 +117,7 @@
       "date": "2027-07-13",
       "cabin": "經濟",
       "status": "available",
-      "avail": "有位",
+      "avail": "2 位",
       "miles": "",
       "tax": "",
       "flight": ""
@@ -224,12 +224,47 @@
       "route": "HKG→LAX",
       "date": "2027-05-20",
       "cabin": "商務",
-      "status": "check",
-      "avail": "有航班(官網確認)",
+      "status": "available",
+      "avail": "2 位",
       "miles": "",
       "tax": "",
-      "flight": "",
-      "note": "星宇官網結果目前只判有無航班，明細待強化"
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-21",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-22",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-23",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "",
+      "tax": "",
+      "flight": ""
     }
   ]
 }
