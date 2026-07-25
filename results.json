@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-25T02:18:07.356Z",
+  "updated": "2026-07-25T07:00:40.945Z",
   "count": 19,
   "results": [
     {
@@ -105,7 +105,7 @@
       "date": "2027-07-12",
       "cabin": "經濟",
       "status": "available",
-      "avail": "2 位",
+      "avail": "4 位",
       "miles": "10,000",
       "tax": "",
       "flight": ""
@@ -117,7 +117,7 @@
       "date": "2027-07-13",
       "cabin": "經濟",
       "status": "available",
-      "avail": "2 位",
+      "avail": "4 位",
       "miles": "10,000",
       "tax": "",
       "flight": ""
@@ -129,7 +129,7 @@
       "date": "2027-07-14",
       "cabin": "經濟",
       "status": "available",
-      "avail": "2 位",
+      "avail": "4 位",
       "miles": "10,000",
       "tax": "",
       "flight": ""
@@ -141,7 +141,7 @@
       "date": "2027-07-15",
       "cabin": "經濟",
       "status": "available",
-      "avail": "2 位",
+      "avail": "4 位",
       "miles": "10,000",
       "tax": "",
       "flight": ""
