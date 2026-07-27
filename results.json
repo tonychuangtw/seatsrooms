@@ -1,6 +1,6 @@
 {
-  "updated": "2026-07-27T02:39:28.740Z",
-  "count": 22,
+  "updated": "2026-07-27T02:50:31.059Z",
+  "count": 28,
   "results": [
     {
       "airline": "華航 CAL",
@@ -263,6 +263,78 @@
       "status": "available",
       "avail": "2 位",
       "miles": "70,262（2人來回）",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "TPE→CTS",
+      "date": "2027-01-21 ~ 2027-01-23",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "TPE→CTS",
+      "date": "2027-01-21 ~ 2027-01-23",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "CTS→TPE",
+      "date": "2027-02-02 ~ 2027-02-03",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→TPE",
+      "date": "2027-02-02 ~ 2027-02-03",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "KHH→CTS",
+      "date": "2027-01-21 ~ 2027-01-23",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "ANA",
+      "program": "Mileage Club",
+      "route": "CTS→KHH",
+      "date": "2027-02-02 ~ 2027-02-03",
+      "cabin": "經濟/商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
       "tax": "",
       "flight": ""
     }
