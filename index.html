@@ -77,8 +77,9 @@
     <h2>➕ 新增監控需求</h2>
     <div class="row2">
       <div><label>出發地(IATA,可逗號多個)</label><input id="f-origin" placeholder="例：TPE 或 TPE,KHH" maxlength="30" style="text-transform:uppercase"></div>
-      <div><label>目的地</label><input id="f-dest" placeholder="例：NRT" maxlength="30" style="text-transform:uppercase"></div>
+      <div><label>目的地(IATA,可逗號多個)</label><input id="f-dest" placeholder="例：NRT 或 NRT,HND" maxlength="30" style="text-transform:uppercase"></div>
     </div>
+    <p class="msg" style="margin:2px 0 6px;">出發地/目的地各最多 5 個,逗號分隔(TPE,KHH → NRT,HND)。官網來源會把所有組合逐一掃描;星宇官網一次只能查一組航線+單一出發日,多填的會在清單上標註。</p>
     <div class="row2">
       <div><label>日期(起)</label><input id="f-date-from" type="date"></div>
       <div><label>日期(迄,留空=單日)</label><input id="f-date-to" type="date"></div>
@@ -209,8 +210,8 @@
   function submitForm(){
     var m=$("f-msg");
     var origin=$("f-origin").value.trim().toUpperCase(), dest=$("f-dest").value.trim().toUpperCase();
-    var re=/^[A-Z]{3}(,[A-Z]{3})*$/;
-    if(!re.test(origin)||!re.test(dest)){m.textContent="出發地/目的地要 3 碼機場代碼";m.className="msg err";return;}
+    var re=/^[A-Z]{3}(,[A-Z]{3}){0,4}$/;   // 後端上限也是各 5 個,兩邊要一致
+    if(!re.test(origin)||!re.test(dest)){m.textContent="出發地/目的地要 3 碼機場代碼,可逗號分隔最多 5 個";m.className="msg err";return;}
     var dFrom=$("f-date-from").value, dTo=$("f-date-to").value;
     if(!dFrom){m.textContent="請選日期";m.className="msg err";return;}
     if(dTo&&dFrom>dTo){m.textContent="起始日不能晚於結束日";m.className="msg err";return;}
