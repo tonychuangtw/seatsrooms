@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>📖 哩程開票規則庫 · 環球票</title>
+<meta name="theme-color" content="#0d0d10">
+<style>
+  :root {
+    --bg:#0d0d10; --card:#17171c; --border:#2a2a33; --text:#ececf1; --text2:#9a9aa8;
+    --accent:#6aa8ff; --ok:#4cc38a; --okbg:#0f2a1e; --dim:#6b6b78; --chip:#22222b;
+    --bad:#e5484d; --warn:#f5a524; --warnbg:#2a1f0b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:0 12px 60px; background:var(--bg); color:var(--text);
+    font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; line-height:1.6;
+    max-width:900px; margin-inline:auto; }
+  h1 { font-size:1.35rem; margin:20px 0 2px; }
+  h2 { font-size:1.06rem; margin:0 0 10px; }
+  h3 { font-size:0.95rem; margin:16px 0 6px; color:var(--accent); }
+  .sub { color:var(--text2); font-size:0.85rem; margin:0 0 14px; }
+  a { color:var(--accent); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin:14px 0; }
+  .nav { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px; }
+  .nav a { display:inline-block; padding:6px 12px; border:1px solid var(--border); border-radius:99px;
+    font-size:0.84rem; text-decoration:none; background:var(--chip); }
+  .nav a.home { border-color:var(--accent); }
+  table{ width:100%; border-collapse:collapse; font-size:0.85rem; margin:6px 0; }
+  thead th{ text-align:left; color:var(--text2); font-weight:600; font-size:0.75rem; padding:6px 8px;
+    border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+  tbody tr:last-child td{ border-bottom:none; }
+  .tw{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .yes{ color:var(--ok); font-weight:700; } .no{ color:var(--bad); font-weight:700; } .maybe{ color:var(--warn); font-weight:700; }
+  .pill{ display:inline-block; padding:1px 8px; border-radius:99px; font-size:0.72rem; border:1px solid var(--border); color:var(--text2); }
+  .pill.star{ color:#ffd479; border-color:#5a4a1e; } .pill.ow{ color:#8fd3ff; border-color:#1e4257; }
+  .pill.st{ color:#ff9fb0; border-color:#5a1e2a; } .pill.none{ color:var(--text2); }
+  ul{ margin:6px 0; padding-left:20px; } li{ margin:3px 0; font-size:0.9rem; }
+  .note{ background:var(--warnbg); border:1px solid #5a441a; border-radius:10px; padding:10px 12px;
+    font-size:0.85rem; margin:10px 0; color:#f0dcae; }
+  .kill{ background:#2a1113; border-color:#5a1e22; color:#f2c0c2; }
+  .good{ background:var(--okbg); border-color:#1e5a3e; color:#bfe9d3; }
+  .foot{ color:var(--dim); font-size:0.78rem; margin-top:22px; text-align:center; }
+  code{ background:var(--chip); padding:1px 5px; border-radius:5px; font-size:0.86em; }
+  /* calculator */
+  textarea, input, select { width:100%; padding:10px; border-radius:9px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:0.95rem; font-family:inherit; }
+  textarea{ min-height:76px; resize:vertical; text-transform:uppercase; }
+  textarea:focus, input:focus{ outline:none; border-color:var(--accent); }
+  label { display:block; font-size:0.85rem; color:var(--text2); margin:10px 0 4px; }
+  button{ border:none; border-radius:9px; padding:11px 18px; font-size:0.95rem; cursor:pointer; font-weight:600; }
+  .primary{ background:var(--accent); color:#06131c; width:100%; margin-top:12px; }
+  .ghost{ background:transparent; color:var(--text2); border:1px solid var(--border); padding:5px 11px; font-size:0.8rem; font-weight:500; }
+  .ex{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .big{ font-size:1.5rem; font-weight:700; color:var(--accent); }
+  .calcgrid{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px; }
+  .calcgrid .stat{ background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:7px 13px; font-size:0.85rem; }
+  .calcgrid .stat b{ font-size:1.05rem; color:var(--accent); display:block; }
+  .err{ color:var(--bad); font-size:0.86rem; }
+  @media (max-width:560px){
+    .sc thead{ display:none; } .sc table,.sc tbody,.sc tr,.sc td{ display:block; width:100%; }
+    .sc tbody tr{ border:1px solid var(--border); border-radius:10px; margin:8px 0; padding:4px 2px; }
+    .sc tbody td{ border:none; padding:3px 10px; }
+    .sc tbody td::before{ content:attr(data-l)"："; color:var(--text2); font-size:0.75rem; }
+    .sc tbody td.main::before{ content:""; } .sc tbody td.main{ font-weight:700; padding-top:8px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>📖 哩程開票規則庫</h1>
+<p class="sub">聚焦「多航段 / 環球票」這種哩程最高價值用法 · 資料查證日 2026-08-01</p>
+<div class="nav">
+  <a class="home" href="index.html">← 回監控主頁</a>
+  <a href="#status">環球票現況</a>
+  <a href="#star">星空聯盟</a>
+  <a href="#ow">寰宇一家</a>
+  <a href="#st">天合聯盟</a>
+  <a href="#calc">距離計算器</a>
+  <a href="#alt">沒有環球票時</a>
+  <a href="#mine">我的五個計畫</a>
+</div>
+
+<!-- ============ 現況總表 ============ -->
+<div class="card" id="status">
+  <h2>🌍 2026 環球票現況：先看這張</h2>
+  <p class="sub" style="margin-bottom:8px;">「還能不能用哩程開一張環球票」在 2023–2025 之間被砍掉一大半，先確認產品還活著再規劃行程。</p>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>聯盟</th><th>環球獎勵票</th><th>還能開的計畫</th><th>商務艙起跳</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="main" data-l="聯盟"><span class="pill star">星空聯盟</span></td>
+        <td data-l="環球票"><span class="yes">仍可開</span></td>
+        <td data-l="可開的計畫">長榮 Infinity、韓亞 Asiana Club、新航 KrisFlyer、土航 Miles&amp;Smiles<br><span style="color:var(--bad)">ANA 已於 2025-06-23 停售新票</span></td>
+        <td data-l="商務起跳">長榮 325,000 哩</td>
+      </tr>
+      <tr>
+        <td class="main" data-l="聯盟"><span class="pill ow">寰宇一家</span></td>
+        <td data-l="環球票"><span class="yes">仍可開（最活躍）</span></td>
+        <td data-l="可開的計畫">日航 JMB oneworld 獎勵票、國泰 Asia Miles 多航空獎勵、澳航 oneworld Classic Reward</td>
+        <td data-l="商務起跳">日航 220,000 哩（最遠級距）</td>
+      </tr>
+      <tr>
+        <td class="main" data-l="聯盟"><span class="pill st">天合聯盟</span></td>
+        <td data-l="環球票"><span class="no">已停售</span></td>
+        <td data-l="可開的計畫">SkyTeam 環球獎勵票 2023-03-31 後不再開立，之後未恢復。只能用「單程 / 來回 + 中停」拼</td>
+        <td data-l="商務起跳">—</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note good"><b>結論：</b>要一票玩多國多洲，主戰場是 <b>寰宇一家（日航 / 國泰 / 澳航）</b>；星盟只剩長榮最好用（而且我本來就有帳號）。華航這條線不要期待環球票，它的價值在單段與短程。</div>
+</div>
+
+<!-- ============ 星空聯盟 ============ -->
+<div class="card" id="star">
+  <h2><span class="pill star">星空聯盟</span> Star Alliance</h2>
+
+  <h3>長榮 Infinity MileageLands — 環球獎勵機票 ⭐ 我的主力</h3>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>艙等</th><th>所需哩程</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="艙等">經濟</td><td data-l="哩程">180,000</td><td data-l="備註">全程最多 <b>10 個航段</b></td></tr>
+      <tr><td class="main" data-l="艙等">商務</td><td data-l="哩程">325,000</td><td data-l="備註">票期 <b>開票日起 1 年</b>，不可延期</td></tr>
+      <tr><td class="main" data-l="艙等">頭等</td><td data-l="哩程">480,000</td><td data-l="備註">星盟頭等艙供給極少，實務上難湊滿環球</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><b>不是按距離分級</b>——不管飛 2 萬還是 3.8 萬哩都同價，所以「盡量繞遠」才划算，這點跟 oneworld 完全相反。</li>
+    <li>所需哩程看<b>區域</b>不看實際搭哪家星盟航空，同區域內換不同承運人不加價。</li>
+    <li><span class="maybe">⚠ 不能線上開</span>：帶中停的星盟獎勵票與環球票，<b>只能打長榮訂位組人工開票</b>。官網只能查、不能出票。</li>
+    <li>建議做法：自己先用工具把每段位子查到（本站監控 / seats.aero / AwardFares），把完整行程含班號日期寫成一張表，再打電話請他們照表開。</li>
+  </ul>
+  <p class="sub"><a href="https://www.evaair.com/zh-tw/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/" target="_blank" rel="noopener">長榮官方星盟獎勵票規則 ↗</a></p>
+
+  <div class="note kill"><b>ANA 環球票已死。</b>ANA Mileage Club 的 Star Alliance Round the World award 自 <b>2025-06-23</b> 起停止開立新票（已開出的票可用到票期結束）。以前那套「按總哩程分級、最多 8 個中停」的超值玩法不用再想了 —— ANA 這條線現在的價值回到<b>單段 / 來回的日本線與跨太平洋</b>。<br>
+  <span class="sub"><a href="https://www.ana.co.jp/en/jp/guide/amc/award/tk/star_round/" target="_blank" rel="noopener">ANA 官方公告 ↗</a></span></div>
+
+  <h3>其他還能開星盟環球票的計畫</h3>
+  <ul>
+    <li><b>韓亞 Asiana Club</b>：商務約 230,000 哩、經濟約 140,000 哩。<span class="maybe">⚠ 韓亞正在被大韓合併</span>，韓亞航班的兌換只到 2026-12-16，中長期不可靠。</li>
+    <li><b>新航 KrisFlyer</b>：有正式的 Star Alliance RTW 產品，好處是能吃到新航自家保留的 Saver 位子。</li>
+    <li><b>土航 Miles&amp;Smiles</b>：2025-12 貶值後仍有固定表殘值，歐洲/中東段路網相關性高。</li>
+  </ul>
+  <p class="sub">
+    <a href="https://www.singaporeair.com/en_UK/us/ppsclub-krisflyer/use-miles/redeem-miles/star-alliance-round-the-world-award/" target="_blank" rel="noopener">新航 Star Alliance RTW ↗</a>
+  </p>
+</div>
+
+<!-- ============ oneworld ============ -->
+<div class="card" id="ow">
+  <h2><span class="pill ow">寰宇一家</span> oneworld — 環球票最強的聯盟</h2>
+  <p class="sub" style="margin-bottom:6px;">三家都是<b>按總距離分級</b>：行程越接近級距上緣越划算，關鍵是「壓在級距線內把哩程用好用滿」。</p>
+
+  <h3>① 日本航空 JMB — oneworld 獎勵機票（按總距離）</h3>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>總距離（哩）</th><th>經濟</th><th>商務</th><th>頭等</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="距離">1–4,000</td><td data-l="經濟">25,000</td><td data-l="商務">48,000</td><td data-l="頭等">72,000</td></tr>
+      <tr><td class="main" data-l="距離">4,001–8,000</td><td data-l="經濟">40,000</td><td data-l="商務">80,000</td><td data-l="頭等">100,000</td></tr>
+      <tr><td class="main" data-l="距離">8,001–10,000</td><td data-l="經濟">50,000</td><td data-l="商務">85,000</td><td data-l="頭等">110,000</td></tr>
+      <tr><td class="main" data-l="距離">10,001–12,000</td><td data-l="經濟">60,000</td><td data-l="商務">110,000</td><td data-l="頭等">160,000</td></tr>
+      <tr><td class="main" data-l="距離">12,001–14,000</td><td data-l="經濟">70,000</td><td data-l="商務">115,000</td><td data-l="頭等">165,000</td></tr>
+      <tr><td class="main" data-l="距離">14,001–20,000</td><td data-l="經濟">90,000</td><td data-l="商務">120,000</td><td data-l="頭等">170,000</td></tr>
+      <tr><td class="main" data-l="距離">20,001–25,000</td><td data-l="經濟">120,000</td><td data-l="商務">150,000</td><td data-l="頭等">230,000</td></tr>
+      <tr><td class="main" data-l="距離">25,001–29,000</td><td data-l="經濟">140,000</td><td data-l="商務">190,000</td><td data-l="頭等">280,000</td></tr>
+      <tr><td class="main" data-l="距離">29,001–34,000</td><td data-l="經濟">150,000</td><td data-l="商務">200,000</td><td data-l="頭等">300,000</td></tr>
+      <tr><td class="main" data-l="距離">34,001–50,000</td><td data-l="經濟">160,000</td><td data-l="商務">220,000</td><td data-l="頭等">330,000</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note good"><b>甜蜜點：14,001–20,000 哩 = 商務 120,000 哩。</b>這一級可以塞下「亞洲→歐洲→北美→亞洲」的完整一圈，商務只要 12 萬哩，是全世界最便宜的環球商務之一。往上跳到 20,001 哩就要 15 萬，<b>差 1 哩差 3 萬哩</b>，行程設計時務必壓線。</div>
+  <ul>
+    <li>計價看<b>各航段哩程加總</b>（不含地面段 / surface sector），不是看飛幾段。</li>
+    <li>混艙時<b>按最高艙等計價</b>——一段商務就全程算商務，所以不要為了省而混，要嘛全商務要嘛全經濟。</li>
+    <li>燃油附加費與稅金各段另計現金，日航自家 + 部分夥伴（BA/JL）YQ 偏高，設計時避開重 YQ 的承運人。</li>
+    <li>可用夥伴：JL、AS/HA、AA、BA、CX、AY、IB、MH、QF、QR、AT、RJ、UL、FJ、WY。</li>
+  </ul>
+  <p class="sub"><a href="https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/" target="_blank" rel="noopener">日航 oneworld 獎勵票官方頁 ↗</a> · <a href="https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/mileage.html" target="_blank" rel="noopener">官方哩程表 ↗</a>（官網有「Award Sector Mileage Calculator」可算官方認定距離）</p>
+
+  <h3>② 國泰 Asia Miles — oneworld 多航空公司獎勵</h3>
+  <ul>
+    <li><b>觸發條件</b>：行程不含國泰時要有 <b>2 家</b> oneworld 夥伴；含國泰時要再加 <b>2 家以上</b> 夥伴。不能混入非 oneworld（例如加航、愛爾蘭航空）。</li>
+    <li><b>路線額度</b>：最多 <b>5 個中停</b> + <b>2 個 24 小時內轉機</b> + <b>2 個開口</b> → 等於出發地之外最多可以踩 <b>9 個城市</b>。</li>
+    <li><b>距離上限 50,000 哩</b>，按總距離分級。已知參考點：約 19,150 哩 = 商務 230,000 哩；約 29,519 哩 = 商務 265,000 哩。</li>
+    <li>混艙同樣<b>按最高艙等計價</b>。</li>
+  </ul>
+  <p class="sub"><a href="https://www.cathaypacific.com/cx/zh_TW/asia-miles.html" target="_blank" rel="noopener">國泰 Asia Miles ↗</a></p>
+
+  <h3>③ 澳航 Qantas — oneworld Classic Flight Reward</h3>
+  <ul>
+    <li><b>距離上限 35,000 哩</b>，最多 <b>5 個免費中停</b>（同一城市只能停一次）。</li>
+    <li>必須包含<b>至少 2 家澳航以外</b>的 oneworld 航空。</li>
+    <li><b>起訖必須同一機場</b>（真正的封閉環球）。</li>
+    <li>參考價：經濟 152,200 點 / 商務 365,800 點。混艙按最高艙等計價。</li>
+    <li>優點是澳航會直接吃 oneworld 夥伴位，缺點是點數需求高、澳洲出發最順。</li>
+  </ul>
+  <p class="sub"><a href="https://www.qantas.com/au/en/frequent-flyer/use-points/classic-flight-rewards/tables.html" target="_blank" rel="noopener">澳航 Classic Reward 表 ↗</a></p>
+</div>
+
+<!-- ============ SkyTeam ============ -->
+<div class="card" id="st">
+  <h2><span class="pill st">天合聯盟</span> SkyTeam</h2>
+  <div class="note kill"><b>沒有環球獎勵票了。</b>SkyTeam Round the World Award 最後開票日為 <b>2023-03-31</b>，之後聯盟層級的環球票（含付費 RTW fare）皆已永久終止，至 2026 年未恢復。</div>
+  <h3>那 SkyTeam 還能怎麼玩多航段</h3>
+  <ul>
+    <li><b>華航華夏</b>：自家網站可開 SkyTeam 夥伴獎勵票，但屬單程 / 來回結構，沒有多城市環球產品。價值在<b>台日韓短程與自家長程</b>，本站監控它就是為了這個。</li>
+    <li><b>Flying Blue（AF/KL）</b>：動態定價、常有 Promo Rewards 月月特價，適合<b>拆成好幾張單程</b>逐段開。</li>
+    <li>實務策略：SkyTeam 這邊不要想「一張票環球」，而是「便宜的單程積木」，跟 oneworld 環球票搭著用。</li>
+  </ul>
+</div>
+
+<!-- ============ 距離計算器 ============ -->
+<div class="card" id="calc">
+  <h2>🧮 環球票距離計算器</h2>
+  <p class="sub" style="margin-bottom:4px;">oneworld 三家都按總距離分級，<b>壓在級距線內</b>是省哩程的關鍵。輸入行程，馬上看落在哪一級、離下一級還差多少哩。</p>
+  <label>行程（IATA 代碼，用 <code>-</code> 或空白分隔；地面段用 <code>//</code>）</label>
+  <textarea id="itin" placeholder="TPE-NRT-JFK-LHR//CDG-DOH-TPE"></textarea>
+  <div class="ex">
+    <button class="ghost" data-ex="TPE-HND-JFK-LHR-DOH-TPE">範例：亞→美→歐→中東→亞</button>
+    <button class="ghost" data-ex="TPE-NRT-LAX-JFK-LHR-HEL-BKK-TPE">範例：7 段大環球</button>
+    <button class="ghost" data-ex="TPE-SYD-SCL-GRU-MAD-DOH-TPE">範例：南半球繞</button>
+  </div>
+  <button class="primary" id="calc-btn">計算</button>
+  <p id="calc-err" class="err"></p>
+  <div id="calc-out"></div>
+</div>
+
+<!-- ============ 替代玩法 ============ -->
+<div class="card" id="alt">
+  <h2>🧩 開不成環球票時：中停 / 開口 積木</h2>
+  <p class="sub" style="margin-bottom:6px;">環球票不是唯一解。用「單程 + 免費中停」串三四張票，常常比一張環球票更彈性、也更容易找到位子。</p>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>計畫</th><th>中停規則</th><th>成本</th><th>限制</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="計畫">Alaska（Atmos Rewards）<span class="pill ow">ow</span></td>
+        <td data-l="中停">單程票可加 <b>1 個中停</b></td><td data-l="成本"><span class="yes">免費</span></td>
+        <td data-l="限制">國際「區域內」（如亞洲內、歐洲內）不可加中停</td></tr>
+      <tr><td class="main" data-l="計畫">Aeroplan（加航）<span class="pill star">star</span></td>
+        <td data-l="中停">單程票可加中停</td><td data-l="成本">+5,000 點</td>
+        <td data-l="限制">純北美境內行程不可加</td></tr>
+      <tr><td class="main" data-l="計畫">長榮 Infinity <span class="pill star">star</span></td>
+        <td data-l="中停">星盟獎勵票可帶中停</td><td data-l="成本">依區域表</td>
+        <td data-l="限制"><span class="maybe">須人工開票</span>，官網不出票</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><b>中停 (stopover)</b> = 停留超過 24 小時；<b>轉機 (layover/transfer)</b> = 24 小時內，不佔中停額度。設計行程時把「想玩的城市」放中停、「只是換機」壓在 24 小時內。</li>
+    <li><b>開口 (open jaw)</b> = A 進 B 出，中間自理（火車 / 廉航）。歐洲段用開口最省距離，例如 <code>LHR 進 // CDG 出</code>，那段陸路不計入總哩程 —— 對按距離計價的 oneworld 表是直接省哩程。</li>
+    <li><b>混艙陷阱</b>：oneworld 三家都是「按最高艙等計價」。所以環球票千萬不要「一段商務其他經濟」，那等於全程付商務價。</li>
+  </ul>
+</div>
+
+<!-- ============ 我的五個計畫 ============ -->
+<div class="card" id="mine">
+  <h2>🎯 本站監控的五個計畫 · 環球票定位</h2>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>計畫</th><th>聯盟</th><th>能開環球票？</th><th>在環球規劃中的角色</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="計畫">長榮 Infinity</td><td data-l="聯盟"><span class="pill star">星盟</span></td>
+        <td data-l="環球票"><span class="yes">✅ 可</span></td><td data-l="角色">唯一自有的環球票開票管道，商務 325k 固定價，繞越遠越賺</td></tr>
+      <tr><td class="main" data-l="計畫">ANA</td><td data-l="聯盟"><span class="pill star">星盟</span></td>
+        <td data-l="環球票"><span class="no">❌ 2025-06 停售</span></td><td data-l="角色">單段／來回主力：日本線、跨太平洋商務</td></tr>
+      <tr><td class="main" data-l="計畫">Alaska</td><td data-l="聯盟"><span class="pill ow">寰宇</span></td>
+        <td data-l="環球票"><span class="no">❌ 無 RTW</span></td><td data-l="角色">單程免費中停最好用，拿來補環球票接不到的洲際段</td></tr>
+      <tr><td class="main" data-l="計畫">華航 華夏</td><td data-l="聯盟"><span class="pill st">天合</span></td>
+        <td data-l="環球票"><span class="no">❌ 聯盟已停</span></td><td data-l="角色">台日韓短程積木；長程只能單獨開</td></tr>
+      <tr><td class="main" data-l="計畫">星宇 COSMILE</td><td data-l="聯盟"><span class="pill none">無聯盟</span></td>
+        <td data-l="環球票"><span class="no">❌</span></td><td data-l="角色">只能自家航線；北美/東南亞單段，不進環球行程</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note"><b>還沒開帳號但值得開的：</b>日本航空 JMB（oneworld 環球票 14,001–20,000 哩商務只要 120k，全球最超值）、國泰 Asia Miles（5 中停 + 2 開口，亞洲出發最順）。這兩個要用環球票的話得先累積或轉點。</div>
+</div>
+
+<p class="foot">規則會變 —— 本頁資料查證於 2026-08-01，開票前務必以各航空官網為準。<br>
+資料來源：ANA / 長榮 / 新航 / 日航 / 國泰 / 澳航 官方網站與各大哩程媒體整理</p>
+
+<script>
+(function(){
+  "use strict";
+  // 主要機場座標（緯度, 經度）—— 用於大圓距離估算
+  var AP={
+    TPE:[25.08,121.23],KHH:[22.58,120.35],TSA:[25.07,121.55],HKG:[22.31,113.91],MFM:[22.15,113.59],
+    NRT:[35.76,140.39],HND:[35.55,139.78],KIX:[34.43,135.24],NGO:[34.86,136.81],CTS:[42.78,141.69],
+    FUK:[33.59,130.45],OKA:[26.20,127.65],ICN:[37.46,126.44],GMP:[37.56,126.79],PUS:[35.18,128.94],
+    PVG:[31.14,121.81],PEK:[40.08,116.58],PKX:[39.51,116.41],CAN:[23.39,113.30],SZX:[22.64,113.81],
+    CTU:[30.58,103.95],SIN:[1.36,103.99],BKK:[13.69,100.75],HKT:[8.11,98.31],KUL:[2.75,101.71],
+    CGK:[-6.13,106.66],DPS:[-8.75,115.17],MNL:[14.51,121.02],SGN:[10.82,106.66],HAN:[21.22,105.81],
+    DEL:[28.57,77.10],BOM:[19.09,72.87],BLR:[13.20,77.71],MAA:[12.99,80.17],MLE:[4.19,73.53],
+    CMB:[7.18,79.88],KTM:[27.70,85.36],ULN:[47.65,106.82],
+    SYD:[-33.94,151.18],MEL:[-37.67,144.84],BNE:[-27.38,153.12],PER:[-31.94,115.97],ADL:[-34.95,138.53],
+    AKL:[-37.01,174.79],CHC:[-43.49,172.53],NAN:[-17.75,177.44],PPT:[-17.56,-149.61],
+    DXB:[25.25,55.36],AUH:[24.43,54.65],DOH:[25.27,51.61],IST:[41.26,28.74],SAW:[40.90,29.31],
+    TLV:[32.01,34.89],CAI:[30.11,31.41],RUH:[24.96,46.70],JED:[21.68,39.16],
+    JNB:[-26.13,28.24],CPT:[-33.97,18.60],NBO:[-1.32,36.93],MRU:[-20.43,57.68],ADD:[8.98,38.80],
+    LHR:[51.47,-0.45],LGW:[51.15,-0.19],MAN:[53.35,-2.27],EDI:[55.95,-3.37],DUB:[53.43,-6.25],
+    CDG:[49.01,2.55],ORY:[48.72,2.38],AMS:[52.31,4.76],FRA:[50.04,8.56],MUC:[48.35,11.79],
+    ZRH:[47.46,8.55],GVA:[46.24,6.11],VIE:[48.11,16.57],BRU:[50.90,4.48],CPH:[55.62,12.66],
+    ARN:[59.65,17.92],OSL:[60.19,11.10],HEL:[60.32,24.96],KEF:[63.99,-22.61],
+    MAD:[40.47,-3.56],BCN:[41.30,2.08],LIS:[38.77,-9.13],FCO:[41.80,12.25],MXP:[45.63,8.72],
+    VCE:[45.51,12.35],ATH:[37.94,23.94],PRG:[50.10,14.26],WAW:[52.17,20.97],BUD:[47.44,19.26],
+    JFK:[40.64,-73.78],EWR:[40.69,-74.17],LGA:[40.78,-73.87],BOS:[42.36,-71.01],IAD:[38.95,-77.46],
+    ORD:[41.98,-87.90],ATL:[33.64,-84.43],MIA:[25.79,-80.29],DFW:[32.90,-97.04],IAH:[29.98,-95.34],
+    DEN:[39.86,-104.67],LAX:[33.94,-118.41],SFO:[37.62,-122.38],SEA:[47.45,-122.31],SAN:[32.73,-117.19],
+    LAS:[36.08,-115.15],PHX:[33.43,-112.01],MSP:[44.88,-93.22],
+    YYZ:[43.68,-79.63],YVR:[49.19,-123.18],YUL:[45.47,-73.74],
+    MEX:[19.44,-99.07],CUN:[21.04,-86.87],PTY:[9.07,-79.38],BOG:[4.70,-74.15],LIM:[-12.02,-77.11],
+    GRU:[-23.43,-46.47],GIG:[-22.81,-43.25],EZE:[-34.82,-58.54],SCL:[-33.39,-70.79],
+    HNL:[21.32,-157.92],OGG:[20.90,-156.43],KOA:[19.74,-156.05],ANC:[61.17,-149.99],GUM:[13.48,144.80]
+  };
+  // JAL oneworld 距離級距（上限, 經濟, 商務, 頭等）
+  var JAL=[[4000,25000,48000,72000],[8000,40000,80000,100000],[10000,50000,85000,110000],
+    [12000,60000,110000,160000],[14000,70000,115000,165000],[20000,90000,120000,170000],
+    [25000,120000,150000,230000],[29000,140000,190000,280000],[34000,150000,200000,300000],
+    [50000,160000,220000,330000]];
+  function $(id){return document.getElementById(id);}
+  function rad(d){return d*Math.PI/180;}
+  function gcd(a,b){ // 大圓距離（法定哩）
+    var R=3958.7613, dLat=rad(b[0]-a[0]), dLon=rad(b[1]-a[1]);
+    var h=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return R*2*Math.asin(Math.min(1,Math.sqrt(h)));
+  }
+  function n(x){return Math.round(x).toLocaleString("en-US");}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+  function calc(){
+    var err=$("calc-err"); err.textContent=""; $("calc-out").innerHTML="";
+    var raw=$("itin").value.toUpperCase();
+    // 保留 // 當地面段標記
+    var toks=raw.replace(/\/\//g," // ").replace(/[-,>→]+/g," ").split(/\s+/).filter(Boolean);
+    var pts=[],bad=[];
+    toks.forEach(function(t){
+      if(t==="//"){pts.push({surface:true});return;}
+      if(!/^[A-Z]{3}$/.test(t)){bad.push(t);return;}
+      if(!AP[t]){bad.push(t);return;}
+      pts.push({code:t});
+    });
+    if(bad.length){err.textContent="不認得的機場代碼："+bad.join(", ")+"（資料庫只收了主要國際機場，可先用鄰近大站估算）";}
+    var codes=pts.filter(function(p){return !p.surface;});
+    if(codes.length<2){if(!bad.length)err.textContent="至少要輸入 2 個機場";return;}
+
+    var legs=[],total=0,surfaceCount=0;
+    for(var i=0;i<pts.length-1;i++){
+      if(pts[i].surface||pts[i+1].surface){ if(pts[i].surface)surfaceCount++; continue; }
+      var d=gcd(AP[pts[i].code],AP[pts[i+1].code]);
+      legs.push({from:pts[i].code,to:pts[i+1].code,d:d}); total+=d;
+    }
+    // 地面段：跳過中間的 // 把兩側接起來（不計距離）
+    var surfaceLegs=[];
+    for(var j=0;j<pts.length-2;j++){
+      if(pts[j+1]&&pts[j+1].surface&&pts[j]&&pts[j+2]) surfaceLegs.push(pts[j].code+" ⇢ "+pts[j+2].code);
+    }
+
+    var first=codes[0].code, last=codes[codes.length-1].code;
+    var closed=first===last;
+    var stops=Math.max(0,codes.length-2-surfaceLegs.length);
+
+    // JAL 級距
+    var band=null,idx=-1;
+    for(var k=0;k<JAL.length;k++){ if(total<=JAL[k][0]){band=JAL[k];idx=k;break;} }
+    var html="";
+    html+='<div class="calcgrid">'
+      +'<div class="stat">總距離<b>'+n(total)+' 哩</b></div>'
+      +'<div class="stat">飛行段數<b>'+legs.length+' 段</b></div>'
+      +'<div class="stat">中途城市<b>'+stops+' 個</b></div>'
+      +'<div class="stat">地面段<b>'+surfaceLegs.length+' 段</b></div></div>';
+
+    html+='<div class="tw sc"><table><thead><tr><th>航段</th><th>距離</th><th>累計</th></tr></thead><tbody>';
+    var acc=0;
+    legs.forEach(function(l){ acc+=l.d;
+      html+='<tr><td class="main" data-l="航段">'+esc(l.from)+' → '+esc(l.to)+'</td><td data-l="距離">'+n(l.d)+'</td><td data-l="累計">'+n(acc)+'</td></tr>'; });
+    surfaceLegs.forEach(function(s){
+      html+='<tr><td class="main" data-l="航段">'+esc(s)+'</td><td data-l="距離"><span class="pill">地面段 不計</span></td><td data-l="累計">—</td></tr>'; });
+    html+='</tbody></table></div>';
+
+    // JAL 報價 + 壓線提示
+    html+='<h3>日航 JMB oneworld 獎勵票</h3>';
+    if(!band){
+      html+='<p class="err">超過 50,000 哩上限，這個行程開不成 oneworld 獎勵票。</p>';
+    }else{
+      var lower=idx>0?JAL[idx-1][0]:0;
+      var toNext=band[0]-total;
+      var prevBand=idx>0?JAL[idx-1]:null;
+      html+='<div class="calcgrid">'
+        +'<div class="stat">級距<b>'+n(lower+1)+'–'+n(band[0])+'</b></div>'
+        +'<div class="stat">經濟<b>'+n(band[1])+'</b></div>'
+        +'<div class="stat">商務<b>'+n(band[2])+'</b></div>'
+        +'<div class="stat">頭等<b>'+n(band[3])+'</b></div></div>';
+      html+='<div class="note'+(toNext<400?' kill':'')+'">距離本級上限還有 <b>'+n(toNext)+' 哩</b>'
+        +(toNext<400?'　⚠️ 太貼線了，官方 sector mileage 跟大圓估算會有幾個百分點誤差，很可能被推到下一級（商務多花 '
+          +(JAL[idx+1]?n(JAL[idx+1][2]-band[2]):'—')+' 哩）。建議留 500 哩以上緩衝。':'')
+        +(prevBand&&(total-lower)<600?'　💡 只要再省 '+n(total-lower)+' 哩就能掉到下一級（商務省 '+n(band[2]-prevBand[2])+' 哩），試試把某段改成地面段開口。':'')
+        +'</div>';
+    }
+
+    // 其他兩家 + 規則校驗
+    html+='<h3>其他計畫的規則校驗</h3><ul>';
+    html+='<li>國泰 Asia Miles 多航空獎勵：距離上限 50,000 哩 → '+(total<=50000?'<span class="yes">通過</span>':'<span class="no">超標</span>')
+      +'；中停上限 5 個 → 目前 '+stops+' 個中途城市 '+(stops<=5?'<span class="yes">OK</span>':'<span class="no">超標</span>')
+      +'；開口上限 2 個 → 目前 '+surfaceLegs.length+' 個 '+(surfaceLegs.length<=2?'<span class="yes">OK</span>':'<span class="no">超標</span>')+'</li>';
+    html+='<li>澳航 oneworld Classic：距離上限 35,000 哩 → '+(total<=35000?'<span class="yes">通過</span>':'<span class="no">超標</span>')
+      +'；中停上限 5 個 → '+(stops<=5?'<span class="yes">OK</span>':'<span class="no">超標</span>')
+      +'；起訖需同機場 → '+(closed?'<span class="yes">'+first+' 起訖相同</span>':'<span class="no">'+first+' 起、'+last+' 迄，不符</span>')+'</li>';
+    html+='<li>長榮 Infinity 環球票：飛行段上限 10 段 → 目前 '+legs.length+' 段 '+(legs.length<=10?'<span class="yes">OK</span>':'<span class="no">超標</span>')
+      +'；固定價商務 325,000 哩（不看距離）→ 本行程 '+n(total)+' 哩，'
+      +(band&&band[2]<325000?'<span class="maybe">日航同距離只要 '+n(band[2])+' 哩，用日航更省</span>':'<span class="yes">距離夠長，長榮固定價划算</span>')+'</li>';
+    html+='</ul>';
+    html+='<p class="sub">※ 這裡用大圓距離估算，與各家官方 sector mileage 表可能有 ±3% 差異。貼近級距線時請用日航官網的 Award Sector Mileage Calculator 覆核。</p>';
+    $("calc-out").innerHTML=html;
+  }
+
+  $("calc-btn").addEventListener("click",calc);
+  [].slice.call(document.querySelectorAll("[data-ex]")).forEach(function(b){
+    b.addEventListener("click",function(){ $("itin").value=b.getAttribute("data-ex"); calc();
+      $("calc-out").scrollIntoView({behavior:"smooth",block:"nearest"}); });
+  });
+})();
+</script>
+</body>
+</html>
