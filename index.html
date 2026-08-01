@@ -105,6 +105,36 @@
 
 <div id="app" class="hidden">
   <div class="card">
+    <h2>🔭 探索模式(不指定目的地)</h2>
+    <p class="msg" style="margin:2px 0 8px;">環球票的正確查法是反過來的:先看哪裡開得出位子,再回頭組行程。這裡從出發地掃整個地區的樞紐機場(走 seats.aero 快取,不打官網),找到的段可以一鍵丟進下面的行程表單。</p>
+    <div class="row2">
+      <div><label>出發地(可逗號多個)</label><input id="x-origin" placeholder="例：TPE" maxlength="30" style="text-transform:uppercase" value="TPE"></div>
+      <div><label>哩程計畫</label><select id="x-program">
+        <option value="ana" selected>ANA 全日空</option><option value="eva">長榮 Infinity</option>
+        <option value="cal">華航 華夏</option><option value="starlux">星宇 COSMILE</option>
+        <option value="alaska">阿拉斯加 Mileage Plan</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>日期(起)</label><input id="x-from" type="date"></div>
+      <div><label>日期(迄)</label><input id="x-to" type="date"></div>
+    </div>
+    <label>艙等</label>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;padding:4px 0 2px;">
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="xcab" value="business" style="width:auto" checked> 商務</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="xcab" value="first" style="width:auto"> 頭等</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="xcab" value="premium" style="width:auto"> 豪經</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="xcab" value="economy" style="width:auto"> 經濟</label>
+    </div>
+    <label>要掃哪些地區(一次最多掃 8 批,超過的會標出來)</label>
+    <div id="x-regions" style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0 2px;"></div>
+    <label>最少可訂位數</label>
+    <select id="x-seats"></select>
+    <button id="x-submit" class="primary">🔭 開始探索</button>
+    <p id="x-msg" class="msg"></p>
+    <div id="x-out"></div>
+  </div>
+
+  <div class="card">
     <h2>🌍 新增行程專案(環球票 / 多航段)</h2>
     <p class="msg" style="margin:2px 0 8px;">一張環球票 = 一組航段。每段各自設彈性日期窗,系統會自動算出「哪幾組日期能把全部段串成一張票」,全段湊齊才推播。洲際長程段(≥2,500 哩)會自動標記為瓶頸段並加掃描配額。</p>
     <label>行程名稱</label>
@@ -288,6 +318,77 @@
     renderWatch((d.watches||[]).filter(function(w){return !w.tripId;}));
     renderTripList(d.trips||[],d.watches||[]); }); }
 
+  // ---- 探索模式：不指定目的地，反查哪裡有位 ----
+  var XCAB={Y:"經濟",W:"豪經",J:"商務",F:"頭等"};
+  function loadRegions(){
+    api("GET","/api/seats/explore/regions",null,function(e,d){
+      if(e)return;
+      var el=$("x-regions"); el.innerHTML="";
+      (d.regions||[]).forEach(function(r,i){
+        var lb=document.createElement("label");
+        lb.style.cssText="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text);font-size:0.85rem";
+        lb.innerHTML='<input type="checkbox" class="xreg" value="'+esc(r.key)+'" style="width:auto"'
+          +(i<2?" checked":"")+'> '+esc(r.label)+' <span style="color:var(--text2);font-size:0.76rem">('+r.n+')</span>';
+        el.appendChild(lb);
+      });
+    });
+  }
+  function explore(){
+    var m=$("x-msg"); m.className="msg";
+    var cabs=[].slice.call(document.querySelectorAll(".xcab:checked")).map(function(c){return c.value;});
+    var regs=[].slice.call(document.querySelectorAll(".xreg:checked")).map(function(c){return c.value;});
+    if(!regs.length){m.textContent="至少選一個地區";m.className="msg err";return;}
+    if(!$("x-from").value){m.textContent="請選開始日期";m.className="msg err";return;}
+    var b=$("x-submit"); b.disabled=true; m.textContent="探索中…(掃多個地區要幾秒)";
+    $("x-out").innerHTML="";
+    api("POST","/api/seats/explore",{origin:$("x-origin").value.trim().toUpperCase(),
+      dateFrom:$("x-from").value,dateTo:$("x-to").value||null,cabins:cabs,regions:regs,
+      seats:parseInt($("x-seats").value,10),program:$("x-program").value},function(e,d){
+      b.disabled=false;
+      if(e){m.textContent="失敗："+e;m.className="msg err";return;}
+      var bits=["掃了 "+d.calls+" 批,找到 "+d.count+" 段"];
+      if(d.quota!=null)bits.push("API 額度剩 "+d.quota);
+      if(d.proxy)bits.push("⚠️ 這個計畫在 seats.aero 沒有自家來源,是用 "+d.proxy+" 的代理視角,實際可訂要以官網為準");
+      if(d.skipped&&d.skipped.length)bits.push("⚠️ 這輪沒掃到："+d.skipped.join("、")+"(超過單次上限,請分批選)");
+      if(d.errors&&d.errors.length)bits.push("查詢錯誤："+d.errors.join("；"));
+      m.textContent=bits.join(" · ");
+      renderExplore(d.hits||[]);
+    });
+  }
+  function renderExplore(hits){
+    var el=$("x-out");
+    if(!hits.length){el.innerHTML='<p class="msg">這個條件下沒找到位子。試著放寬日期、加選地區,或改成經濟艙看看。</p>';return;}
+    var g={},order=[];
+    hits.forEach(function(h){ if(!g[h.regionLabel]){g[h.regionLabel]=[];order.push(h.regionLabel);} g[h.regionLabel].push(h); });
+    var html="";
+    order.forEach(function(rl){
+      html+='<div class="grp">'+esc(rl)+' <span class="prog">'+g[rl].length+' 段</span></div>';
+      html+='<table><thead><tr><th>日期</th><th>航線</th><th>艙等</th><th>位數</th><th>哩程</th><th>來源</th><th></th></tr></thead><tbody>';
+      g[rl].forEach(function(h,i){
+        var bn=h.distance&&h.distance>=2500;
+        html+='<tr><td class="main" data-l="日期">'+esc(h.date)+'</td>'
+          +'<td data-l="航線">'+esc(h.origin+"→"+h.dest)+(h.distance?' <span class="flt">'+h.distance.toLocaleString()+' 哩</span>':"")
+          +(bn?' <span class="bn">⭐</span>':"")+'</td>'
+          +'<td data-l="艙等">'+esc(XCAB[h.cabin]||h.cabin)+'</td>'
+          +'<td data-l="位數" class="rt">'+esc(String(h.seats))+'</td>'
+          +'<td data-l="哩程">'+esc(h.miles||"")+'</td>'
+          +'<td data-l="來源" class="flt">'+esc(h.source)+(h.direct==="direct"?" 直飛":" 轉機")+'</td>'
+          +'<td data-l=""><button class="scan xadd" data-i="'+esc(rl)+"|"+i+'">➕ 加進行程</button></td></tr>';
+      });
+      html+='</tbody></table>';
+    });
+    el.innerHTML=html;
+    el.querySelectorAll(".xadd").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var p=btn.getAttribute("data-i").split("|"), h=g[p[0]][parseInt(p[1],10)];
+        var cabMap={Y:"economy",W:"premium",J:"business",F:"first"};
+        addLeg({origin:h.origin,dest:h.dest,dateFrom:h.date,dateTo:h.date,cabin:cabMap[h.cabin]});
+        btn.textContent="✅ 已加入";
+        $("t-legs").scrollIntoView({behavior:"smooth",block:"center"});
+      });
+    });
+  }
+
   // ---- 行程專案：建立 ----
   var TRIP_STATUS={pending:"等待首掃",none:"❌ 尚無可行組合",partial:"🟡 部分段有位",ready:"🎉 全段湊齊",paused:"⏸ 暫停中"};
   function legRow(i,preset){
@@ -313,6 +414,12 @@
       s.innerHTML=mi==null?"":(mi.toLocaleString()+" 哩"+(mi>=2500?' <span class="bn">⭐ 瓶頸段</span>':""));
     }
     d.querySelector(".l-o").addEventListener("input",upd); d.querySelector(".l-d").addEventListener("input",upd);
+    // 從探索模式「加進行程」帶過來的預設值
+    if(p.dateFrom)d.querySelector(".l-f").value=p.dateFrom;
+    if(p.dateTo)d.querySelector(".l-t").value=p.dateTo;
+    if(p.cabin){ var cs=d.querySelector(".l-c");
+      for(var i=0;i<cs.options.length;i++) if(cs.options[i].value===p.cabin){cs.selectedIndex=i;break;} }
+    upd();
     return d;
   }
   function renumberLegs(){
@@ -537,7 +644,7 @@
   });
   ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
-  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();}
+  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();loadRegions();}
   function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
 
   window.addEventListener("load",function(){
@@ -559,6 +666,10 @@
     addLeg(); addLeg();
     $("t-addleg").addEventListener("click",function(){ addLeg(); });
     $("t-submit").addEventListener("click",submitTrip);
+    // 探索模式
+    (function(){ var s=$("x-seats");
+      for(var i=1;i<=9;i++){ var o=document.createElement("option"); o.value=i; o.textContent=i+" 位以上"; if(i===2)o.selected=true; s.appendChild(o); } })();
+    $("x-submit").addEventListener("click",explore);
     initGsi(); if(token())showApp();
     $("f-submit").addEventListener("click",submitForm);
     $("test-push").addEventListener("click",function(){
