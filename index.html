@@ -55,6 +55,36 @@
   tr.avail{ background:var(--okbg); } tr.none td{ color:var(--dim); }
   .rt{ color:var(--ok); font-weight:700; } .flt{ color:var(--text2); font-size:0.79rem; }
   .foot{ color:var(--dim); font-size:0.78rem; margin-top:22px; text-align:center; }
+  /* ---- 行程專案 / 日曆熱圖 ---- */
+  .leg{ border:1px solid var(--border); border-radius:10px; padding:9px 10px; margin:8px 0; background:var(--bg); }
+  .leg-hd{ display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--text2); margin-bottom:4px; }
+  .leg-hd b{ color:var(--text); }
+  .leg .row2{ margin-top:4px; }
+  .leg input, .leg select{ padding:7px 8px; font-size:0.88rem; }
+  .leg label{ margin:6px 0 3px; font-size:0.78rem; }
+  .rm{ background:transparent; color:var(--bad); border:none; padding:2px 6px; font-size:0.8rem; cursor:pointer; }
+  .addleg{ background:transparent; color:var(--accent); border:1px dashed var(--border); width:100%; padding:9px; font-size:0.88rem; }
+  .bn{ color:var(--warn,#f5a524); font-size:0.74rem; }
+  .trip{ border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0; background:var(--card); }
+  .trip-hd{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+  .trip-name{ font-weight:700; font-size:1rem; }
+  .badge.ready{ background:var(--ok); color:#06281a; border:none; font-weight:700; }
+  .badge.partial{ color:#f5a524; border-color:#5a441a; }
+  .badge.none{ color:var(--bad); border-color:var(--bad); }
+  .hm{ overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+  .hm table{ border-collapse:separate; border-spacing:2px; font-size:0.7rem; }
+  .hm th.lg{ text-align:left; white-space:nowrap; padding-right:8px; font-weight:600; color:var(--text);
+    font-size:0.78rem; position:sticky; left:0; background:var(--card); z-index:1; }
+  .hm th.dt{ font-weight:400; color:var(--text2); font-size:0.62rem; line-height:1.15; padding:0 1px; }
+  .hm td.c{ width:17px; height:19px; border-radius:4px; background:#1e1e26; padding:0; }
+  .hm td.c.ok{ background:var(--ok); } .hm td.c.no{ background:#26262f; }
+  .hm td.c.out{ background:transparent; } .hm td.c.pend{ background:#2b2b38; }
+  .hm td.c.pick{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .lgd{ display:flex; gap:12px; flex-wrap:wrap; font-size:0.74rem; color:var(--text2); margin:6px 0 2px; }
+  .lgd i{ display:inline-block; width:11px; height:11px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+  .combo{ border:1px solid var(--border); border-radius:9px; padding:7px 10px; margin:6px 0; font-size:0.83rem; cursor:pointer; }
+  .combo:hover{ border-color:var(--accent); } .combo.on{ border-color:var(--accent); background:var(--okbg); }
+  .combo .cd{ color:var(--ok); font-weight:600; }
   @media (max-width:560px){
     thead{ display:none; } table,tbody,tr,td{ display:block; width:100%; }
     tbody tr{ border:1px solid var(--border); border-radius:10px; margin:8px 0; padding:4px 2px; }
@@ -75,7 +105,42 @@
 
 <div id="app" class="hidden">
   <div class="card">
-    <h2>➕ 新增監控需求</h2>
+    <h2>🌍 新增行程專案(環球票 / 多航段)</h2>
+    <p class="msg" style="margin:2px 0 8px;">一張環球票 = 一組航段。每段各自設彈性日期窗,系統會自動算出「哪幾組日期能把全部段串成一張票」,全段湊齊才推播。洲際長程段(≥2,500 哩)會自動標記為瓶頸段並加掃描配額。</p>
+    <label>行程名稱</label>
+    <input id="t-name" placeholder="例：2027 環球商務" maxlength="40">
+    <div id="t-legs"></div>
+    <button id="t-addleg" class="addleg">➕ 加一段</button>
+    <div class="row2" style="margin-top:10px;">
+      <div><label>人數(幾人到幾人)</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <select id="t-seats-min" style="flex:1"></select><span style="color:var(--text2)">到</span>
+          <select id="t-seats-max" style="flex:1"></select>
+        </div></div>
+      <div><label>每段之間最少停留(天)</label><select id="t-stay">
+        <option value="0">0(可同日轉機)</option><option value="1" selected>1 天</option>
+        <option value="2">2 天</option><option value="3">3 天</option>
+        <option value="5">5 天</option><option value="7">7 天</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>資料來源</label><select id="t-source">
+        <option value="airline" selected>航空公司官網(較準)</option>
+        <option value="seatsaero">seats.aero(聯盟代理)</option></select></div>
+      <div><label>每日掃描次數(基準)</label><select id="t-scan">
+        <option value="1">1 次</option><option value="2" selected>2 次</option>
+        <option value="3">3 次</option><option value="4">4 次</option></select></div>
+    </div>
+    <button id="t-submit" class="primary">建立行程</button>
+    <p id="t-msg" class="msg"></p>
+  </div>
+
+  <div class="card">
+    <h2>🗺️ 行程專案清單</h2>
+    <div id="triplist"><p class="msg">載入中…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>➕ 新增單點監控需求</h2>
     <div class="row2">
       <div><label>出發地(IATA,可逗號多個)</label><input id="f-origin" placeholder="例：TPE 或 TPE,KHH" maxlength="30" style="text-transform:uppercase"></div>
       <div><label>目的地(IATA,可逗號多個)</label><input id="f-dest" placeholder="例：NRT 或 NRT,HND" maxlength="30" style="text-transform:uppercase"></div>
@@ -127,7 +192,11 @@
   </div>
 </div>
 
-<h2 style="margin-top:26px;">🎯 監控結果 <button id="refresh-btn" class="pause" style="vertical-align:middle;margin-left:8px;">🔄 立即刷新</button></h2>
+<h2 style="margin-top:26px;">🌍 行程可行性</h2>
+<p class="sub">各段有位日期上下對齊,綠色 = 有位;下方是能把全段串起來的日期組合</p>
+<div id="trips"><p class="msg">還沒有行程專案 —— 登入後用上面的「新增行程專案」建立。</p></div>
+
+<h2 style="margin-top:26px;">🎯 監控結果(逐段明細) <button id="refresh-btn" class="pause" style="vertical-align:middle;margin-left:8px;">🔄 立即刷新</button></h2>
 <p class="sub" id="res-sub">載入中…</p>
 <div class="summary" id="summary"></div>
 <div class="controls">
@@ -152,6 +221,13 @@
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
   function token(){try{return sessionStorage.getItem(TOKEN_KEY);}catch(e){return null;}}
   function fmtTime(ms){if(!ms)return "—";var d=new Date(ms);return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
+  // 機場座標(與後端 scripts/seatsrooms-monitor/airports-ll.json 同一份),只用來即時顯示段距離
+  var AP={};
+  fetch("airports-ll.json").then(function(r){return r.json();}).then(function(d){AP=d;}).catch(function(){});
+  function gcMiles(a,b){ var R=3958.7613,r=function(x){return x*Math.PI/180;};
+    var dLat=r(b[0]-a[0]),dLon=r(b[1]-a[1]);
+    var h=Math.pow(Math.sin(dLat/2),2)+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.pow(Math.sin(dLon/2),2);
+    return Math.round(R*2*Math.asin(Math.min(1,Math.sqrt(h)))); }
 
   function api(method,path,body,cb){
     var x=new XMLHttpRequest(); x.open(method,API+path);
@@ -206,7 +282,176 @@
       el.appendChild(div);
     });
   }
-  function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){ if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;} renderWatch(d.watches); }); }
+  function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){
+    if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;}
+    // 行程的 leg 不混進單點需求清單,不然一條環球票會塞 8 列進去
+    renderWatch((d.watches||[]).filter(function(w){return !w.tripId;}));
+    renderTripList(d.trips||[],d.watches||[]); }); }
+
+  // ---- 行程專案：建立 ----
+  var TRIP_STATUS={pending:"等待首掃",none:"❌ 尚無可行組合",partial:"🟡 部分段有位",ready:"🎉 全段湊齊",paused:"⏸ 暫停中"};
+  function legRow(i,preset){
+    var d=document.createElement("div"); d.className="leg";
+    var p=preset||{};
+    d.innerHTML='<div class="leg-hd"><b>第 '+(i+1)+' 段</b><span class="dist"></span><button class="rm" type="button">✕ 移除</button></div>'
+      +'<div class="row2"><div><input class="l-o" placeholder="出發 如 TPE" maxlength="3" style="text-transform:uppercase" value="'+esc(p.origin||"")+'"></div>'
+      +'<div><input class="l-d" placeholder="抵達 如 NRT" maxlength="3" style="text-transform:uppercase" value="'+esc(p.dest||"")+'"></div></div>'
+      +'<div class="row2"><div><label>最早</label><input class="l-f" type="date"></div>'
+      +'<div><label>最晚</label><input class="l-t" type="date"></div></div>'
+      +'<div class="row2"><div><label>艙等</label><select class="l-c">'
+      +'<option value="business" selected>商務</option><option value="first">頭等</option>'
+      +'<option value="business,first">商務或頭等</option><option value="premium">豪華經濟</option>'
+      +'<option value="economy">經濟</option><option value="">皆可</option></select></div>'
+      +'<div><label>哩程計畫</label><select class="l-p">'
+      +'<option value="ana">ANA</option><option value="eva">長榮</option><option value="cal">華航</option>'
+      +'<option value="starlux">星宇</option><option value="alaska">Alaska</option></select></div></div>';
+    d.querySelector(".rm").addEventListener("click",function(){ d.remove(); renumberLegs(); });
+    // 兩端都填好就顯示距離與瓶頸標記(跟後端同一條 2,500 哩線)
+    function upd(){
+      var o=d.querySelector(".l-o").value.toUpperCase().trim(), t=d.querySelector(".l-d").value.toUpperCase().trim();
+      var s=d.querySelector(".dist"), mi=(AP[o]&&AP[t])?gcMiles(AP[o],AP[t]):null;
+      s.innerHTML=mi==null?"":(mi.toLocaleString()+" 哩"+(mi>=2500?' <span class="bn">⭐ 瓶頸段</span>':""));
+    }
+    d.querySelector(".l-o").addEventListener("input",upd); d.querySelector(".l-d").addEventListener("input",upd);
+    return d;
+  }
+  function renumberLegs(){
+    var rows=$("t-legs").querySelectorAll(".leg");
+    for(var i=0;i<rows.length;i++) rows[i].querySelector(".leg-hd b").textContent="第 "+(i+1)+" 段";
+  }
+  function addLeg(preset){ $("t-legs").appendChild(legRow($("t-legs").querySelectorAll(".leg").length,preset)); }
+
+  function submitTrip(){
+    var m=$("t-msg"); m.className="msg";
+    var rows=[].slice.call($("t-legs").querySelectorAll(".leg"));
+    if(rows.length<2){m.textContent="行程至少要 2 段";m.className="msg err";return;}
+    var legs=[],bad=null;
+    rows.forEach(function(r,i){
+      var o=r.querySelector(".l-o").value.toUpperCase().trim(), dd=r.querySelector(".l-d").value.toUpperCase().trim();
+      var f=r.querySelector(".l-f").value, t=r.querySelector(".l-t").value;
+      if(!/^[A-Z]{3}$/.test(o)||!/^[A-Z]{3}$/.test(dd)){bad=bad||("第 "+(i+1)+" 段機場代碼要 3 碼");return;}
+      if(!f){bad=bad||("第 "+(i+1)+" 段要填最早日期");return;}
+      if(t&&f>t){bad=bad||("第 "+(i+1)+" 段最早日期晚於最晚日期");return;}
+      var cv=r.querySelector(".l-c").value;
+      legs.push({origin:o,dest:dd,dateFrom:f,dateTo:t||null,
+        cabins:cv?cv.split(","):[],program:r.querySelector(".l-p").value});
+    });
+    if(bad){m.textContent=bad;m.className="msg err";return;}
+    var btn=$("t-submit"); btn.disabled=true; m.textContent="建立中…";
+    api("POST","/api/seats/trip",{name:$("t-name").value.trim(),legs:legs,
+      seatsMin:parseInt($("t-seats-min").value,10),seatsMax:parseInt($("t-seats-max").value,10),
+      minStayDays:parseInt($("t-stay").value,10),source:$("t-source").value,
+      scanPerDay:parseInt($("t-scan").value,10)},function(e,d){
+      btn.disabled=false;
+      if(e){m.textContent="失敗："+e;m.className="msg err";return;}
+      m.textContent="✅ 已建立「"+(d.trip&&d.trip.name)+"」,等下一輪掃描";
+      $("t-legs").innerHTML=""; addLeg(); addLeg(); $("t-name").value="";
+      renderTripList(d.trips||[],d.watches||[]);
+    });
+  }
+
+  // ---- 行程專案：清單（管理用） ----
+  function renderTripList(trips,watches){
+    var el=$("triplist");
+    if(!trips||!trips.length){el.innerHTML='<p class="msg">還沒有行程專案。</p>';return;}
+    el.innerHTML="";
+    trips.forEach(function(t){
+      var legs=(t.legIds||[]).map(function(id){return watches.filter(function(w){return w.id===id;})[0];}).filter(Boolean);
+      var paused=t.active===false;
+      var st=paused?"⏸ 暫停中":(TRIP_STATUS[t.status]||t.status||"—");
+      var cls=paused?"paused":(t.status==="ready"?"ready":(t.status==="partial"?"partial":(t.status==="none"?"none":"pending")));
+      var div=document.createElement("div"); div.className="entry";
+      var path=legs.map(function(l){return l.origin;}).concat(legs.length?[legs[legs.length-1].dest]:[]).join(" → ");
+      var nb=legs.filter(function(l){return l.bottleneck;}).length;
+      var totMi=legs.reduce(function(s,l){return s+(l.distance||0);},0);
+      div.innerHTML='<div class="entry-head"><div>'
+        +'<div class="entry-name">'+esc(t.name)+' <span class="badge '+cls+'">'+esc(st)+'</span></div>'
+        +'<div class="entry-meta">'+esc(path)+'<br>'+legs.length+' 段 · 約 '+totMi.toLocaleString()+' 哩 · 瓶頸段 '+nb+' 段 · '
+        +(t.seatsMin===t.seatsMax?t.seatsMin:t.seatsMin+"~"+t.seatsMax)+' 人 · 最少停留 '+(t.minStayDays==null?1:t.minStayDays)+' 天'
+        +((t.combos&&t.combos.length)?'<br>✅ '+t.combos.length+' 組可行日期':"")+'</div></div>'
+        +'<div class="btn-row"><button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
+      div.querySelector(".pause").addEventListener("click",function(){
+        api("PATCH","/api/seats/trip/"+encodeURIComponent(t.id),{active:paused},function(e,d){
+          if(e){alert("更新失敗："+e);return;} renderTripList(d.trips,d.watches);});});
+      div.querySelector(".del").addEventListener("click",function(){
+        if(!confirm("刪除行程「"+t.name+"」?底下 "+legs.length+" 段監控會一起移除。"))return;
+        api("DELETE","/api/seats/trip/"+encodeURIComponent(t.id),null,function(e,d){
+          if(e){alert("刪除失敗："+e);return;} renderTripList(d.trips,d.watches); refreshWatch();});});
+      el.appendChild(div);
+    });
+  }
+
+  // ---- 行程可行性：日曆熱圖 + 可行組合（公開,吃 results.json） ----
+  var CAB_ZH={economy:"經濟",premium:"豪經",business:"商務",first:"頭等"};
+  function dayList(a,b){ var out=[],d=new Date(a+"T00:00:00"),e=new Date(b+"T00:00:00");
+    for(var i=0;i<200&&d<=e;i++){ out.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1);} return out; }
+  function renderTrips(trips){
+    var el=$("trips");
+    if(!trips||!trips.length){el.innerHTML='<p class="msg">還沒有行程專案 —— 登入後用上面的「新增行程專案」建立。</p>';return;}
+    el.innerHTML="";
+    trips.forEach(function(t,ti){
+      var box=document.createElement("div"); box.className="trip";
+      // 共用日期軸：取所有段時間窗的聯集,才能上下對齊看出哪個時間帶能串起來
+      var lo=null,hi=null;
+      t.legs.forEach(function(l){ (l.window||[]).forEach(function(d){ if(lo===null||d<lo)lo=d; if(hi===null||d>hi)hi=d; }); });
+      var axis=(lo&&hi)?dayList(lo,hi):[];
+      var st=TRIP_STATUS[t.status]||t.status;
+      var cls=t.status==="ready"?"ready":(t.status==="partial"?"partial":(t.status==="none"?"none":"pending"));
+      var h='<div class="trip-hd"><div><div class="trip-name">'+esc(t.name)+' <span class="badge '+cls+'">'+esc(st)+'</span></div>'
+        +'<div class="entry-meta">'+t.legs.length+' 段 · '+(t.seatsMin===t.seatsMax?t.seatsMin:t.seatsMin+"~"+t.seatsMax)
+        +' 人 · 段間最少停留 '+t.minStayDays+' 天</div></div></div>';
+      h+='<div class="hm"><table><thead><tr><th class="lg"></th>';
+      axis.forEach(function(d){ var p=d.split("-");
+        h+='<th class="dt">'+p[1]+'<br>'+p[2]+'</th>'; });
+      h+='</tr></thead><tbody>';
+      t.legs.forEach(function(l,li){
+        var win={},av={};
+        (l.window||[]).forEach(function(d){win[d]=1;}); (l.avail||[]).forEach(function(d){av[d]=1;});
+        h+='<tr><th class="lg">'+esc(l.label)+(l.bottleneck?' <span class="bn">⭐</span>':"")
+          +'<br><span style="font-weight:400;color:var(--text2);font-size:0.7rem;">'
+          +esc((l.cabins||[]).map(function(c){return CAB_ZH[c]||c;}).join("/")||"皆可")
+          +(l.distance?" · "+l.distance.toLocaleString()+" 哩":"")+'</span></th>';
+        axis.forEach(function(d){
+          var c=!win[d]?"out":(av[d]?"ok":(l.scanned?"no":"pend"));
+          h+='<td class="c '+c+'" data-leg="'+li+'" data-d="'+d+'" title="'+esc(l.route+" "+d+" "+(av[d]?"有位":(win[d]?(l.scanned?"無位":"未掃"):"")))+'"></td>';
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table></div>';
+      h+='<div class="lgd"><span><i style="background:var(--ok)"></i>有位</span><span><i style="background:#26262f"></i>無位</span>'
+        +'<span><i style="background:#2b2b38"></i>未掃</span><span><i style="background:transparent;border:1px solid var(--border)"></i>不在時間窗</span></div>';
+      if(t.combos&&t.combos.length){
+        h+='<h2 style="font-size:0.92rem;margin:12px 0 4px;">✅ 可行日期組合（'+t.combos.length+' 組,點一下在上圖標出來）</h2>';
+        t.combos.slice(0,10).forEach(function(c,ci){
+          var span=Math.round((new Date(c[c.length-1])-new Date(c[0]))/86400000);
+          h+='<div class="combo" data-combo="'+ci+'"><b>組合 '+(ci+1)+'</b> <span style="color:var(--text2)">('+span+' 天)</span><br>'
+            +c.map(function(d,i){return '<span class="cd">'+d+'</span> '+esc(t.legs[i]?t.legs[i].route:"");}).join(" ・ ")+'</div>';
+        });
+        if(t.combos.length>10) h+='<p class="msg">… 還有 '+(t.combos.length-10)+' 組</p>';
+      } else if(t.status==="partial"){
+        var miss=t.legs.filter(function(l){return !(l.avail||[]).length;});
+        h+='<p class="msg">卡在這 '+miss.length+' 段還沒位子：<b>'+miss.map(function(l){return esc(l.route);}).join("、")
+          +'</b>'+(miss.some(function(l){return l.bottleneck;})?'（含瓶頸段,這才是關鍵）':"")+'</p>';
+      }
+      box.innerHTML=h;
+      // 點組合 → 在熱圖上標出被選中的格子
+      box.querySelectorAll(".combo").forEach(function(cb){
+        cb.addEventListener("click",function(){
+          var on=cb.classList.contains("on");
+          box.querySelectorAll(".combo").forEach(function(x){x.classList.remove("on");});
+          box.querySelectorAll("td.c.pick").forEach(function(x){x.classList.remove("pick");});
+          if(on)return;
+          cb.classList.add("on");
+          var c=t.combos[parseInt(cb.getAttribute("data-combo"),10)];
+          c.forEach(function(d,li){
+            var td=box.querySelector('td.c[data-leg="'+li+'"][data-d="'+d+'"]');
+            if(td)td.classList.add("pick");
+          });
+        });
+      });
+      el.appendChild(box);
+    });
+  }
 
   function submitForm(){
     var m=$("f-msg");
@@ -259,6 +504,7 @@
   function loadResults(){
     fetch("results.json?t="+Date.now()).then(function(r){return r.json();}).then(function(d){
       ALL=d.results||[];
+      renderTrips(d.trips||[]);
       $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
       var na=ALL.filter(function(r){return r.status==="available";}).length;
       $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>';
@@ -305,6 +551,14 @@
       for(var i=1;i<=9;i++){ var a=document.createElement("option"); a.value=i; a.textContent=i; if(i===2)a.selected=true; mn.appendChild(a);
         var b=document.createElement("option"); b.value=i; b.textContent=i; if(i===2)b.selected=true; mx.appendChild(b); }
       mn.addEventListener("change",function(){ if(parseInt(mx.value,10)<parseInt(mn.value,10)) mx.value=mn.value; }); })();
+    // 行程專案：人數下拉 + 預設兩段
+    (function(){ var mn=$("t-seats-min"), mx=$("t-seats-max");
+      for(var i=1;i<=9;i++){ var a=document.createElement("option"); a.value=i; a.textContent=i; if(i===2)a.selected=true; mn.appendChild(a);
+        var b=document.createElement("option"); b.value=i; b.textContent=i; if(i===2)b.selected=true; mx.appendChild(b); }
+      mn.addEventListener("change",function(){ if(parseInt(mx.value,10)<parseInt(mn.value,10)) mx.value=mn.value; }); })();
+    addLeg(); addLeg();
+    $("t-addleg").addEventListener("click",function(){ addLeg(); });
+    $("t-submit").addEventListener("click",submitTrip);
     initGsi(); if(token())showApp();
     $("f-submit").addEventListener("click",submitForm);
     $("test-push").addEventListener("click",function(){
