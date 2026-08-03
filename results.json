@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-03T07:48:59.095Z",
+  "updated": "2026-08-03T12:17:30.876Z",
   "count": 81,
   "results": [
     {
@@ -44,9 +44,9 @@
       "route": "CTS→TPE",
       "date": "2027-07-15",
       "cabin": "經濟",
-      "status": "none",
-      "avail": "—",
-      "miles": "",
+      "status": "available",
+      "avail": "1 位",
+      "miles": "17,500",
       "tax": "",
       "flight": ""
     },
