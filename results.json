@@ -1,6 +1,6 @@
 {
-  "updated": "2026-08-02T20:47:59.282Z",
-  "count": 78,
+  "updated": "2026-08-03T01:47:58.938Z",
+  "count": 81,
   "results": [
     {
       "airline": "華航 CAL",
@@ -919,6 +919,42 @@
       "program": "COSMILE",
       "route": "HKG→LAX",
       "date": "2027-05-20",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "70,262（2人來回）",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-21",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "70,262（2人來回）",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-22",
+      "cabin": "商務",
+      "status": "available",
+      "avail": "2 位",
+      "miles": "70,262（2人來回）",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "星宇 STARLUX",
+      "program": "COSMILE",
+      "route": "HKG→LAX",
+      "date": "2027-05-23",
       "cabin": "商務",
       "status": "available",
       "avail": "2 位",
