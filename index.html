@@ -104,6 +104,7 @@
 </div>
 
 <div id="app" class="hidden">
+  <div id="role-banner" class="msg hidden" style="margin:10px 0;padding:9px 12px;border:1px solid #6663;border-radius:8px;"></div>
   <div class="card">
     <h2>🔭 探索模式(不指定目的地)</h2>
     <p class="msg" style="margin:2px 0 8px;">環球票的正確查法是反過來的:先看哪裡開得出位子,再回頭組行程。這裡從出發地掃整個地區的樞紐機場(走 seats.aero 快取,不打官網),找到的段可以一鍵丟進下面的行程表單。</p>
@@ -222,6 +223,18 @@
   </div>
 </div>
 
+<div class="card" id="grants-card">
+  <h2>👥 家人授權</h2>
+  <p class="msg" style="margin:4px 0 10px">被授權的人用自己的 Google 帳號登入本頁：<b>共編</b>可幫你新增監控（他建的需求變有位時，通知寄到他的 email）、<b>唯讀</b>只能看。你自己的通知照走 TG。</p>
+  <div id="grant-list"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <input id="g-email" type="email" placeholder="family@gmail.com" style="flex:1;min-width:200px">
+    <select id="g-role" style="width:auto"><option value="editor">共編 editor</option><option value="viewer">唯讀 viewer</option></select>
+    <button id="g-add" class="primary">授權</button>
+  </div>
+  <p id="g-msg" class="msg"></p>
+</div>
+
 <h2 style="margin-top:26px;">🌍 行程可行性</h2>
 <p class="sub">各段有位日期上下對齊,綠色 = 有位;下方是能把全段串起來的日期組合</p>
 <div id="trips"><p class="msg">還沒有行程專案 —— 登入後用上面的「新增行程專案」建立。</p></div>
@@ -270,6 +283,44 @@
     x.send(body?JSON.stringify(body):null);
   }
 
+  // ---- 分級授權（2026-08-04）：GET watch 回 role/me，非 owner 介面降級 ----
+  var ROLE=null, ME=null;
+  function applyRole(){
+    function show(el,on){ if(el)el.classList.toggle("hidden",!on); }
+    var owner=ROLE==="owner";
+    show($("x-submit").closest(".card"), owner);      // 探索：後端仍 owner-only
+    show($("t-submit").closest(".card"), owner);      // 行程建立：owner-only
+    show($("test-push"), owner);
+    show($("grants-card"), owner);
+    show($("f-submit").closest(".card"), owner||ROLE==="editor");
+    var b=$("role-banner");
+    if(b){ if(owner||!ROLE){ b.classList.add("hidden"); }
+      else { b.classList.remove("hidden");
+        b.textContent = ROLE==="editor"
+          ? "👥 共編模式：你可以新增監控（只能改/刪自己建的）；你建的需求變有位時會寄信到你的 email。"
+          : "👀 檢視模式：唯讀。"; } }
+    if(owner) loadGrants();
+  }
+  function loadGrants(){
+    api("GET","/api/grants?app=seatsrooms",null,function(e,d){
+      var el=$("grant-list"); if(!el)return;
+      if(e){el.innerHTML='<p class="msg err">授權清單載入失敗：'+esc(e)+'</p>';return;}
+      var g=(d&&d.granted)||[];
+      el.innerHTML=g.length?"":'<p class="msg">還沒有授權任何人。</p>';
+      g.forEach(function(x){
+        var em=x.viewer_email||x.viewerEmail||"";
+        var row=document.createElement("div"); row.className="entry";
+        row.innerHTML='<div class="entry-head"><div class="entry-name">'+esc(em)
+          +' <span class="badge">'+esc(x.role)+'</span></div>'
+          +'<div class="btn-row"><button class="del">移除</button></div></div>';
+        row.querySelector(".del").addEventListener("click",function(){
+          api("DELETE","/api/grants?app=seatsrooms&viewerEmail="+encodeURIComponent(em),null,function(e2){
+            if(e2){alert("移除失敗："+e2);return;} loadGrants(); });});
+        el.appendChild(row);
+      });
+    });
+  }
+
   // ---- watchlist (managed) ----
   function renderWatch(ws){
     var el=$("watchlist");
@@ -289,12 +340,15 @@
         +'<div class="entry-name">'+esc(w.origin)+" → "+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
         +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+esc(seatTxt)+" · "+esc(PROGRAM_LABEL[w.program]||w.program)
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
-        +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")+"</div></div>"
+        +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")
+        +(w.notifyEmail?"<br>👤 "+esc(w.createdBy||w.notifyEmail)+" 建立 · 📧 有位通知寄 email":"")+"</div></div>"
         +'<div class="btn-row">'
-        +(paused?'':(w.source==="seatsaero"
+        +((paused||ROLE!=="owner")?'':(w.source==="seatsaero"
           ?'<button class="scan" title="立刻掃一次這條需求（seats.aero），約 1 分鐘後狀態更新">⚡ 立即掃</button>'
           :'<button class="scan" title="觸發 1800 立刻掃官網（同計畫的需求一起掃），結果約 10-30 分鐘更新，有位會推 TG">⚡ 立即掃</button>'))
-        +'<button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
+        +((ROLE==="owner"||(ROLE==="editor"&&ME&&w.createdBy===ME))
+          ?'<button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button>':'')
+        +'</div></div>';
       var sb=div.querySelector(".scan");
       if(sb)sb.addEventListener("click",function(){
         sb.disabled=true; sb.textContent="⏳ 掃描中…";
@@ -304,16 +358,19 @@
           if(d&&d.mode==="airline"){ setTimeout(refreshWatch,660000); }
           else { setTimeout(refreshWatch,30000); setTimeout(refreshWatch,75000); }
         });});
-      div.querySelector(".pause").addEventListener("click",function(){
-        api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch(d.watches);});});
-      div.querySelector(".del").addEventListener("click",function(){
+      var pb=div.querySelector(".pause");
+      if(pb)pb.addEventListener("click",function(){
+        api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});});
+      var db=div.querySelector(".del");
+      if(db)db.addEventListener("click",function(){
         if(!confirm("停止監控 "+w.origin+"→"+w.dest+"？"))return;
-        api("DELETE","/api/seats/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){alert("刪除失敗："+e);return;}renderWatch(d.watches);});});
+        api("DELETE","/api/seats/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){alert("刪除失敗："+e);return;}renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});});
       el.appendChild(div);
     });
   }
   function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){
     if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;}
+    ROLE=(d&&d.role)||"owner"; ME=(d&&d.me)||null; applyRole();
     // 行程的 leg 不混進單點需求清單,不然一條環球票會塞 8 列進去
     renderWatch((d.watches||[]).filter(function(w){return !w.tripId;}));
     renderTripList(d.trips||[],d.watches||[]); }); }
@@ -476,11 +533,13 @@
         +'<div class="entry-meta">'+esc(path)+'<br>'+legs.length+' 段 · 約 '+totMi.toLocaleString()+' 哩 · 瓶頸段 '+nb+' 段 · '
         +(t.seatsMin===t.seatsMax?t.seatsMin:t.seatsMin+"~"+t.seatsMax)+' 人 · 最少停留 '+(t.minStayDays==null?1:t.minStayDays)+' 天'
         +((t.combos&&t.combos.length)?'<br>✅ '+t.combos.length+' 組可行日期':"")+'</div></div>'
-        +'<div class="btn-row"><button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div></div>';
-      div.querySelector(".pause").addEventListener("click",function(){
+        +(ROLE==="owner"?'<div class="btn-row"><button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button></div>':'')+'</div>';
+      var tp=div.querySelector(".pause");
+      if(tp)tp.addEventListener("click",function(){
         api("PATCH","/api/seats/trip/"+encodeURIComponent(t.id),{active:paused},function(e,d){
           if(e){alert("更新失敗："+e);return;} renderTripList(d.trips,d.watches);});});
-      div.querySelector(".del").addEventListener("click",function(){
+      var td=div.querySelector(".del");
+      if(td)td.addEventListener("click",function(){
         if(!confirm("刪除行程「"+t.name+"」?底下 "+legs.length+" 段監控會一起移除。"))return;
         api("DELETE","/api/seats/trip/"+encodeURIComponent(t.id),null,function(e,d){
           if(e){alert("刪除失敗："+e);return;} renderTripList(d.trips,d.watches); refreshWatch();});});
@@ -675,6 +734,13 @@
     $("test-push").addEventListener("click",function(){
       var m=$("push-msg"); m.textContent="發送中…"; m.className="msg";
       api("POST","/api/seats/test-push",{},function(e){ if(e){m.textContent="推播失敗："+e;m.className="msg err";return;} m.textContent="✅ 已發送,看 @seatsrroomsbot"; });});
+    $("g-add").addEventListener("click",function(){
+      var em=$("g-email").value.trim().toLowerCase(), role=$("g-role").value, m=$("g-msg");
+      if(!em){m.textContent="請填 email";m.className="msg err";return;}
+      m.textContent="授權中…"; m.className="msg";
+      api("POST","/api/grants?app=seatsrooms",{viewerEmail:em,role:role},function(e){
+        if(e){m.textContent="授權失敗："+e;m.className="msg err";return;}
+        m.textContent="✅ 已授權 "+em+"（"+role+"）"; $("g-email").value=""; loadGrants(); });});
     loadResults();
   });
 })();
