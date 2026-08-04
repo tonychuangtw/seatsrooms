@@ -1,6 +1,6 @@
 {
-  "updated": "2026-08-03T20:47:59.189Z",
-  "count": 81,
+  "updated": "2026-08-04T02:47:59.023Z",
+  "count": 87,
   "results": [
     {
       "airline": "華航 CAL",
@@ -211,6 +211,78 @@
       "program": "華夏 Dynasty",
       "route": "CTS→TPE",
       "date": "2027-02-03",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "KHH→XMN",
+      "date": "2026-08-21",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "KHH→XMN",
+      "date": "2026-08-21",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "KHH→PVG",
+      "date": "2026-08-21",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "KHH→PVG",
+      "date": "2026-08-21",
+      "cabin": "商務",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "KHH→FOC",
+      "date": "2026-08-21",
+      "cabin": "經濟",
+      "status": "none",
+      "avail": "—",
+      "miles": "",
+      "tax": "",
+      "flight": ""
+    },
+    {
+      "airline": "華航 CAL",
+      "program": "華夏 Dynasty",
+      "route": "KHH→FOC",
+      "date": "2026-08-21",
       "cabin": "商務",
       "status": "none",
       "avail": "—",
