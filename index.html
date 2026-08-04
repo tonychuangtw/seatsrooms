@@ -290,6 +290,7 @@
     var owner=ROLE==="owner";
     show($("x-submit").closest(".card"), owner);      // 探索：後端仍 owner-only
     show($("t-submit").closest(".card"), owner);      // 行程建立：owner-only
+    show($("triplist").closest(".card"), owner||ROLE==="viewer"); // 行程清單：editor 看不到
     show($("test-push"), owner);
     show($("grants-card"), owner);
     show($("f-submit").closest(".card"), owner||ROLE==="editor");
@@ -297,8 +298,8 @@
     if(b){ if(owner||!ROLE){ b.classList.add("hidden"); }
       else { b.classList.remove("hidden");
         b.textContent = ROLE==="editor"
-          ? "👥 共編模式：你可以新增監控（只能改/刪自己建的）；你建的需求變有位時會寄信到你的 email。"
-          : "👀 檢視模式：唯讀。"; } }
+          ? "👥 共編模式：這裡只顯示「你自己建立」的監控；變有位時會寄信到你的 email。"
+          : "👀 檢視模式：唯讀，可看全部監控。"; } }
     if(owner) loadGrants();
   }
   function loadGrants(){
@@ -371,6 +372,12 @@
   function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){
     if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;}
     ROLE=(d&&d.role)||"owner"; ME=(d&&d.me)||null; applyRole();
+    // editor 的結果表只顯示自己監控的航線：從自己的 watch 展開 origin×dest 組合
+    if(ROLE==="editor"){ MY_ROUTES={};
+      (d.watches||[]).forEach(function(w){
+        String(w.origin||"").split(",").forEach(function(o){
+          String(w.dest||"").split(",").forEach(function(x){ MY_ROUTES[o.trim()+"→"+x.trim()]=1; });});});
+      loadResults(); }
     // 行程的 leg 不混進單點需求清單,不然一條環球票會塞 8 列進去
     renderWatch((d.watches||[]).filter(function(w){return !w.tripId;}));
     renderTripList(d.trips||[],d.watches||[]); }); }
@@ -667,10 +674,13 @@
     });
     el.innerHTML=html;
   }
+  var MY_ROUTES=null;
   function loadResults(){
     fetch("results.json?t="+Date.now()).then(function(r){return r.json();}).then(function(d){
       ALL=d.results||[];
-      renderTrips(d.trips||[]);
+      // 共編家人只看自己監控的航線（結果檔是公開靜態檔，這裡是介面收斂不是權限）
+      if(ROLE==="editor"&&MY_ROUTES) ALL=ALL.filter(function(r){return MY_ROUTES[r.route];});
+      renderTrips(ROLE==="editor"?[]:(d.trips||[]));
       $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
       var na=ALL.filter(function(r){return r.status==="available";}).length;
       $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>';
