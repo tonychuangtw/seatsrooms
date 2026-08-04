@@ -372,12 +372,6 @@
   function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){
     if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;}
     ROLE=(d&&d.role)||"owner"; ME=(d&&d.me)||null; applyRole();
-    // editor 的結果表只顯示自己監控的航線：從自己的 watch 展開 origin×dest 組合
-    if(ROLE==="editor"){ MY_ROUTES={};
-      (d.watches||[]).forEach(function(w){
-        String(w.origin||"").split(",").forEach(function(o){
-          String(w.dest||"").split(",").forEach(function(x){ MY_ROUTES[o.trim()+"→"+x.trim()]=1; });});});
-      loadResults(); }
     // 行程的 leg 不混進單點需求清單,不然一條環球票會塞 8 列進去
     renderWatch((d.watches||[]).filter(function(w){return !w.tripId;}));
     renderTripList(d.trips||[],d.watches||[]); }); }
@@ -674,13 +668,17 @@
     });
     el.innerHTML=html;
   }
-  var MY_ROUTES=null;
   function loadResults(){
-    fetch("results.json?t="+Date.now()).then(function(r){return r.json();}).then(function(d){
+    // 2026-08-04 起結果不公開：要登入（且被授權）才拿得到，editor 由後端過濾成自己的航線
+    if(!token()){
+      $("results").innerHTML='<p class="msg">🔒 監控結果需要登入才能看，請先在上方登入。</p>';
+      $("trips").innerHTML=""; $("summary").innerHTML=""; $("res-sub").textContent="";
+      return;
+    }
+    api("GET","/api/seats/results",null,function(e,d){
+      if(e){$("results").innerHTML='<p class="msg err">載入結果失敗：'+esc(e)+"</p>";return;}
       ALL=d.results||[];
-      // 共編家人只看自己監控的航線（結果檔是公開靜態檔，這裡是介面收斂不是權限）
-      if(ROLE==="editor"&&MY_ROUTES) ALL=ALL.filter(function(r){return MY_ROUTES[r.route];});
-      renderTrips(ROLE==="editor"?[]:(d.trips||[]));
+      renderTrips(d.trips||[]);
       $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
       var na=ALL.filter(function(r){return r.status==="available";}).length;
       $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>';
@@ -689,7 +687,7 @@
         (r.cabin||"").split(/[\/、]/).forEach(function(c){c=c.trim();if(c&&cabins.indexOf(c)<0)cabins.push(c);}); });
       rebuildFilter("rf-air",airs); rebuildFilter("rf-cabin",cabins);
       renderResults();
-    }).catch(function(e){$("results").innerHTML='<p class="msg">載入 results.json 失敗：'+esc(e.message)+'</p>';});
+    });
   }
   function rebuildFilter(id,vals){
     var sel=$(id), keep=sel.value;
@@ -713,8 +711,8 @@
   });
   ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
-  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();loadRegions();}
-  function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
+  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();loadRegions();loadResults();}
+  function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");loadResults();}
 
   window.addEventListener("load",function(){
     function initGsi(){
