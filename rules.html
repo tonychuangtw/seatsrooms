@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📖 哩程開票規則庫 · 環球票</title>
+<title>📖 哩程開票規則庫</title>
 <meta name="theme-color" content="#0d0d10">
 <style>
   :root {
@@ -69,19 +69,249 @@
 <body>
 
 <h1>📖 哩程開票規則庫</h1>
-<p class="sub">聚焦「多航段 / 環球票」這種哩程最高價值用法 · 資料查證日 2026-08-01</p>
+<p class="sub">上半部：一般哩程票（單程/來回）六計畫規則與划算開法 · 下半部：環球票 / 多航段 · 一般票查證 2026-08-09、環球票查證 2026-08-01</p>
 <div class="nav">
   <a class="home" href="index.html">← 回監控主頁</a>
-  <a href="#status">環球票現況</a>
-  <a href="#star">星空聯盟</a>
-  <a href="#ow">寰宇一家</a>
-  <a href="#st">天合聯盟</a>
+  <a href="#quick">⚡ 航線怎麼選</a>
+  <a href="#compare">六計畫總表</a>
+  <a href="#p-ana">ANA</a>
+  <a href="#p-cal">華航</a>
+  <a href="#p-jx">星宇</a>
+  <a href="#p-as">Alaska</a>
+  <a href="#p-am">Asia Miles</a>
+  <a href="#p-eva">長榮</a>
+  <a href="#status">環球票</a>
   <a href="#calc">距離計算器</a>
-  <a href="#alt">沒有環球票時</a>
-  <a href="#mine">我的五個計畫</a>
 </div>
 
-<!-- ============ 現況總表 ============ -->
+<!-- ================================================================
+     一般哩程票：航線速查 + 六計畫規則
+     計畫排序 = Tony 哩程取得容易度：ANA → 華航 → 星宇 → Alaska → Asia Miles → 長榮
+     ================================================================ -->
+
+<div class="card" id="quick">
+  <h2>⚡ 航線怎麼選：先查這張</h2>
+  <p class="sub" style="margin-bottom:8px;">同一條航線常常好幾個計畫都能開，價差可以到一倍。下表照「我手上哩程好取得的順序：<b>ANA → 華航 → 星宇 → Alaska → Asia Miles → 長榮</b>」權衡後給的建議。</p>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>你要飛的</th><th>首選</th><th>備援 / 次選</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 日本（經濟）</td>
+        <td data-l="首選"><span class="yes">ANA</span> 單程 8,500–13,000 哩（分淡旺季；本站實掃 TPE→CTS 8,500、CTS→KHH 10,000）</td>
+        <td data-l="備援">星宇 17,500 / 華航 17,500 單程 —— 貴一截但位子來源不同，ANA 沒位時救援</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 日本（商務）</td>
+        <td data-l="首選"><span class="yes">星宇</span> 25,000 單程（固定表，官網直開）</td>
+        <td data-l="備援">華航 30,000 單程（本站實掃）／ANA 官網季節價</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 兩岸 / 港澳</td>
+        <td data-l="首選"><span class="yes">華航</span> 經濟 17,500、商務 30,000 單程（本站實掃 KHH⇄PVG）</td>
+        <td data-l="備援">TPE⇄HKG 這種 750 哩內超短程用 Asia Miles，Standard 經濟最低約 7,000 單程</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北美（商務）</td>
+        <td data-l="首選"><span class="yes">Alaska 點開星宇</span> 美西⇄TPE 75,000 單程，免燃油費，還能加免費中停</td>
+        <td data-l="備援">ANA 星盟夥伴來回約 10–14 萬（要收 YQ）；華航自家 135,000 來回</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北美（經濟）</td>
+        <td data-l="首選"><span class="yes">ANA</span> 自家經日本轉，經濟單程 20,000–36,000 分季</td>
+        <td data-l="備援">Alaska 開星宇經濟／華航 120,000 來回</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 歐洲</td>
+        <td data-l="首選"><span class="yes">ANA</span> 星盟夥伴（長榮/全日空/漢莎等，來回制最划算）</td>
+        <td data-l="備援">Asia Miles 經 HKG（國泰 YQ 重，先算稅費再決定）</td></tr>
+      <tr><td class="main" data-l="航線">環球 / 多航段</td>
+        <td data-l="首選"><span class="yes">長榮</span> 商務 325,000 固定價（唯一自有管道，見下方環球票區）</td>
+        <td data-l="備援">日航 JMB 商務 120,000（14,001–20,000 哩級距，需先轉點開帳號）</td></tr>
+      <tr><td class="main" data-l="航線">美國內陸段 / 美洲段</td>
+        <td data-l="首選"><span class="yes">Alaska</span>（自家+夥伴、免 YQ、單程可中停）</td>
+        <td data-l="備援">華航點開天合夥伴（美洲區域內商務來回 70,000，要電話）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note"><b>通用觀念：</b>①「有位才有價」—— 表列哩程是底價，先用本站監控/官網查到獎勵位再談。②混艙幾乎都按最高艙等計價。③YQ（燃油附加費）差很大：Alaska 不收、ANA/華航/國泰/長榮都收，長程一段可差 USD 100–300，比價時要連稅費一起算。</div>
+</div>
+
+<div class="card" id="compare">
+  <h2>📊 六計畫規則總表</h2>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>計畫</th><th>聯盟</th><th>計價方式</th><th>可開單程?</th><th>燃油費 YQ</th><th>哩程效期</th><th>開票管道</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="計畫">ANA</td><td data-l="聯盟"><span class="pill star">星盟</span></td>
+        <td data-l="計價">區域 + 淡旺季(L/R/H)</td><td data-l="單程"><span class="yes">✅ 2025-06 起</span>（來回的一半）</td>
+        <td data-l="YQ"><span class="no">收</span></td><td data-l="效期">36 個月</td>
+        <td data-l="管道">官網（自家+星盟都能線上開）</td></tr>
+      <tr><td class="main" data-l="計畫">華航 華夏</td><td data-l="聯盟"><span class="pill st">天合</span></td>
+        <td data-l="計價">區域制（2025-11 新制）</td><td data-l="單程"><span class="yes">✅</span></td>
+        <td data-l="YQ"><span class="no">收</span></td><td data-l="效期">依新制，官網為準</td>
+        <td data-l="管道">自家官網可開；天合夥伴<span class="maybe">要電話</span></td></tr>
+      <tr><td class="main" data-l="計畫">星宇 COSMILE</td><td data-l="聯盟"><span class="pill none">無聯盟</span></td>
+        <td data-l="計價">固定表</td><td data-l="單程"><span class="yes">✅</span></td>
+        <td data-l="YQ">低 / 併入票價</td><td data-l="效期">基本卡無效期</td>
+        <td data-l="管道">官網 / App；改票免費</td></tr>
+      <tr><td class="main" data-l="計畫">Alaska Atmos</td><td data-l="聯盟"><span class="pill ow">寰宇</span></td>
+        <td data-l="計價">夥伴固定距離表（自家動態）</td><td data-l="單程"><span class="yes">✅ +1 免費中停</span></td>
+        <td data-l="YQ"><span class="yes">不收</span></td><td data-l="效期"><span class="yes">不過期</span></td>
+        <td data-l="管道">美國官網（多數夥伴可線上）</td></tr>
+      <tr><td class="main" data-l="計畫">Asia Miles</td><td data-l="聯盟"><span class="pill ow">寰宇</span></td>
+        <td data-l="計價">距離制（2025-04 新表）</td><td data-l="單程"><span class="yes">✅</span></td>
+        <td data-l="YQ"><span class="no">收（偏重，兩週一調）</span></td><td data-l="效期">18 個月活動制（有進出就續）</td>
+        <td data-l="管道">官網；複雜行程電話</td></tr>
+      <tr><td class="main" data-l="計畫">長榮 Infinity</td><td data-l="聯盟"><span class="pill star">星盟</span></td>
+        <td data-l="計價">區域制</td><td data-l="單程"><span class="yes">✅（來回的一半）</span></td>
+        <td data-l="YQ"><span class="no">收</span></td><td data-l="效期">3 年（無活動展延）</td>
+        <td data-l="管道">官網；星盟夥伴/帶中停<span class="maybe">要電話</span>，另收服務費 USD 33/張</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ============ ① ANA ============ -->
+<div class="card" id="p-ana">
+  <h2>① ANA Mileage Club <span class="pill star">星盟</span> — 哩程來源第一順位</h2>
+  <div class="note"><b>2025-06-24 大改版，先記三件事：</b>開放<b>單程</b>開票（來回的一半，自家+星盟夥伴都適用）；環球票同日停售；日本⇄北美商務旺季來回漲到 165,000。舊部落格的攻略數字大多已失效。</div>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>航線</th><th>經濟</th><th>商務</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 日本（自家）</td><td data-l="經濟">單程 8,500–13,000</td><td data-l="商務">官網季節價</td>
+        <td data-l="備註">分 L/R/H 三季；本站實掃 TPE→CTS 8,500、CTS→KHH 10,000（2026-08）</td></tr>
+      <tr><td class="main" data-l="航線">日本 ⇄ 北美（自家）</td><td data-l="經濟">單程 20,000–36,000</td><td data-l="商務">來回 110,000(淡)–165,000(旺)</td>
+        <td data-l="備註">台灣出發要接日本段，可搭配中停東京</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北美（星盟夥伴）</td><td data-l="經濟">來回約 45,000–60,000</td><td data-l="商務">來回約 100,000–140,000</td>
+        <td data-l="備註">夥伴表另一張，來回可帶 1 個中停（單程不行）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>355 天前可開；官網可直接開星盟夥伴（長榮/聯航/加航…），不用打電話。</li>
+    <li>候補（waitlist）：出發前 14 天沒補到位，<b>整張票含已確認段一起自動取消</b>，用候補要有備案。</li>
+    <li>YQ 照收：日本線一段約 USD 30–60，長程一段 USD 100–300，開票時另刷卡。</li>
+    <li>效期 36 個月（跨年家族旅遊要抓好入帳時間）。取消退哩收手續費，2025-06 後開的票手續費可刷卡付。</li>
+  </ul>
+  <div class="note good"><b>划算開法：</b>台日經濟單程是全場最便宜（8.5k 起）；改版後單程半價 = 去程 ANA 回程別家的混搭自由度大增；北美商務挑淡季日期能省 5 成。</div>
+  <p class="sub"><a href="https://www.ana.co.jp/en/jp/guide/amc/award/international/terms/" target="_blank" rel="noopener">ANA 自家獎勵表 ↗</a> · <a href="https://www.ana.co.jp/en/jp/guide/amc/award/tk/zone/" target="_blank" rel="noopener">星盟夥伴表 ↗</a></p>
+</div>
+
+<!-- ============ ② 華航 ============ -->
+<div class="card" id="p-cal">
+  <h2>② 華航 華夏哩程 <span class="pill st">天合</span> — 第二順位</h2>
+  <div class="note"><b>2025-11 起整個計畫改制中</b>，規則滾動修訂，下面數字以本站實掃與官網現況為主，開票前用官網試算確認。</div>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>航線</th><th>經濟</th><th>商務</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="航線">台日 / 兩岸（自家）</td><td data-l="經濟">單程 17,500</td><td data-l="商務">單程 30,000</td>
+        <td data-l="備註">本站實掃 CTS⇄TPE、KHH⇄PVG（2026-08），跨區間可能略異</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北美（自家）</td><td data-l="經濟">來回 120,000</td><td data-l="商務">來回 135,000</td>
+        <td data-l="備註">部落格彙整價；商務對經濟的加價幅度小，值得直上商務</td></tr>
+      <tr><td class="main" data-l="航線">美洲區域內（天合夥伴）</td><td data-l="經濟">—</td><td data-l="商務">來回 70,000</td>
+        <td data-l="備註">北美⇄南美這種區域內夥伴票是隱藏甜點，只能電話開</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>自家獎勵票官網直接開；<b>天合夥伴（達美/法航/大韓…）只能打電話</b>，不能線上。</li>
+    <li>YQ 照收（長程明顯）；改票/退票收費，退哩另收約 4% 哩程手續費。</li>
+    <li>本站監控華航就是因為：兩岸與台日短程的獎勵位放得比較大方，實掃常見 9 位經濟。</li>
+  </ul>
+  <div class="note good"><b>划算開法：</b>華航哩程當「短程積木」用 —— 兩岸單程 17,500/30,000 隨開隨有位；長程北美商務 135k 來回在改制後仍屬便宜，有位就是賺。</div>
+  <p class="sub"><a href="https://www.china-airlines.com/tw/zh/member/" target="_blank" rel="noopener">華夏會員官網 ↗</a></p>
+</div>
+
+<!-- ============ ③ 星宇 ============ -->
+<div class="card" id="p-jx">
+  <h2>③ 星宇 COSMILE <span class="pill none">無聯盟</span> — 第三順位</h2>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>航線</th><th>經濟</th><th>商務</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 日本（自家）</td><td data-l="經濟">單程 17,500</td><td data-l="商務">單程 25,000</td>
+        <td data-l="備註">固定表；商務只比經濟多 7,500，<b>日本線商務甜點</b></td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 東南亞（自家）</td><td data-l="經濟" colspan="2">官網固定表試算</td>
+        <td data-l="備註">結構同日本線，短程商務加價幅度小</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北美（自家）</td><td data-l="經濟" colspan="2">官網試算（本站監控實掃過 2 人來回制報價）</td>
+        <td data-l="備註">自家長程兌換值普通 —— 北美商務改用 Alaska 點開星宇（75k 單程）更划算</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>2025-10 起與 Alaska 合作大擴（美國 12 個新門戶代碼共享），COSMILE 也能兌換 Alaska 航班，細節官網為準。</li>
+    <li><b>改票免費</b>（六家裡唯一）、退票收 USD 30–50；基本卡點數無效期。</li>
+    <li>家庭帳戶最多 5 人自動合點 —— 湊全家出遊的票很好用。</li>
+  </ul>
+  <div class="note good"><b>划算開法：</b>日本線商務 25k 單程 + 免費改票 = 先卡位再慢慢調日期的最佳工具；點數留在家庭池，別浪費在自家北美商務。</div>
+  <p class="sub"><a href="https://www.starlux-airlines.com/zh-TW/cosmile" target="_blank" rel="noopener">COSMILE 官網 ↗</a></p>
+</div>
+
+<!-- ============ ④ Alaska ============ -->
+<div class="card" id="p-as">
+  <h2>④ Alaska Atmos Rewards <span class="pill ow">寰宇</span> — 第四順位</h2>
+  <div class="note"><b>2025-08 改名：</b>Mileage Plan 與夏威夷航空合併成 <b>Atmos Rewards</b>（哩程 1:1 沿用）。自家航班改動態計價，但<b>夥伴獎勵票仍是固定表</b> —— 這就是它的價值所在。</div>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>夥伴航線（單程）</th><th>經濟</th><th>商務</th><th>頭等</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="航線">星宇 美西(LAX/SFO/SEA) ⇄ TPE</td><td data-l="經濟">20,000 起</td><td data-l="商務"><span class="yes">75,000</span></td><td data-l="頭等">—</td></tr>
+      <tr><td class="main" data-l="航線">日航 美西 ⇄ 日本</td><td data-l="經濟">—</td><td data-l="商務"><span class="yes">60,000</span></td><td data-l="頭等">70,000</td></tr>
+      <tr><td class="main" data-l="航線">國泰 美國 ⇄ 香港</td><td data-l="經濟">—</td><td data-l="商務">75,000</td><td data-l="頭等"><span class="yes">70,000</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><b>不收 YQ</b>：稅費常常只有 USD 20–60，跟收 YQ 的計畫比等於現省幾千台幣。</li>
+    <li><b>單程可加 1 個免費中停</b>（多城市搜尋開；亞洲區域內航線不適用）—— 75k 星宇商務可以順路在中停點玩一段。</li>
+    <li>哩程<b>不過期</b>；改票/退哩免費；2026-07 起夥伴開票費 USD 20/人/程。</li>
+    <li>台灣補哩管道：萬豪點 3:1 轉入（每 6 萬送 5 千）、或買哩促銷（常有 50–100% bonus）。</li>
+  </ul>
+  <div class="note kill"><b>地雷：</b>沒有台灣客服，只能美國官網/客服電話；搜尋偶有「幻影位」（查得到訂不進），下手前打電話確認；多夥伴混開限制多，複雜行程也要電話。</div>
+  <p class="sub"><a href="https://www.alaskaair.com/atmosrewards/" target="_blank" rel="noopener">Atmos Rewards 官網 ↗</a></p>
+</div>
+
+<!-- ============ ⑤ Asia Miles ============ -->
+<div class="card" id="p-am">
+  <h2>⑤ 國泰 Asia Miles <span class="pill ow">寰宇</span> — 第五順位</h2>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>距離級距（單程）</th><th>經濟 Standard</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="級距">超短程 &lt;750 哩（TPE⇄HKG）</td><td data-l="經濟">約 7,000 起</td><td data-l="備註">全場最便宜的短程票之一</td></tr>
+      <tr><td class="main" data-l="級距">短程 751–2,750 哩（TPE⇄日本）</td><td data-l="經濟">約 9,000–13,000</td><td data-l="備註">但台日直飛得用寰宇夥伴（JAL），實務多經 HKG</td></tr>
+      <tr><td class="main" data-l="級距">中長程（經 HKG 去歐美）</td><td data-l="經濟" colspan="2">2025-04-15 新表，官網距離表試算；Standard 是固定底價，Choice/Tailored 動態加價換保證有位</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>效期 <b>18 個月活動制</b>：期間內有任何進出（累積或兌換）就自動續 18 個月，比固定效期好養。</li>
+    <li>JAL 獎勵位對 Asia Miles <b>360 天前</b>釋出，比多數寰宇管道早 —— 搶日本線旺季票的隱藏優勢。</li>
+    <li>YQ 偏重且每兩週調整；取消 USD 120 / 更改 USD 50，成本高，開票前想清楚。</li>
+    <li>未成年子女的哩程可免費轉給監護人（每年上限 12 萬）——家庭累積友善。</li>
+  </ul>
+  <div class="note good"><b>划算開法：</b>把 Asia Miles 定位成「HKG 樞紐票 + 搶 JAL 早鳥位」的工具；長程先算完 YQ 再跟 ANA/Alaska 比，別只看哩程數。</div>
+  <p class="sub"><a href="https://flights.cathaypacific.com/en_US/redeem-flights/flight-award-chart.html" target="_blank" rel="noopener">國泰獎勵表 ↗</a></p>
+</div>
+
+<!-- ============ ⑥ 長榮 ============ -->
+<div class="card" id="p-eva">
+  <h2>⑥ 長榮 Infinity MileageLands <span class="pill star">星盟</span> — 第六順位</h2>
+  <div class="tw sc">
+  <table>
+    <thead><tr><th>航線</th><th>經濟</th><th>商務</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 港澳（自家）</td><td data-l="經濟">來回 20,000</td><td data-l="商務">—</td><td data-l="備註">單程可開（來回一半）</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北亞（星盟夥伴）</td><td data-l="經濟">來回 40,000</td><td data-l="商務">來回 60,000</td><td data-l="備註">社群彙整價，電話開票</td></tr>
+      <tr><td class="main" data-l="航線">台灣 ⇄ 北美（星盟夥伴）</td><td data-l="經濟">來回 115,000</td><td data-l="商務">來回 175,000</td><td data-l="備註">比 ANA 夥伴表貴 —— 長程別用長榮哩開</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>自家來回可帶 <b>2 個中停 + 1 個開口</b>，星盟票最多 2 中停 —— 規則慷慨但要人工開。</li>
+    <li>開票服務費 USD 33/張（2026-08 起，<b>不退</b>）；效期 3 年硬性，無活動展延。</li>
+    <li>轉讓哩程要先登錄受讓人（綠/銀/金卡每年 6 人）。</li>
+  </ul>
+  <div class="note good"><b>划算開法：</b>長榮哩的最高價值就是<b>環球票商務 325,000</b>（見下方環球票區）——一般單程/來回用別家開，把長榮哩存起來等環球票湊位。</div>
+  <p class="sub"><a href="https://www.evaair.com/zh-tw/infinity-mileagelands/" target="_blank" rel="noopener">Infinity 官網 ↗</a></p>
+</div>
+
+<!-- ============ 環球票 / 多航段 ============ -->
+<h1 style="margin-top:34px;">🌏 環球票 / 多航段篇</h1>
+<p class="sub">以下聚焦「多航段 / 環球票」這種哩程最高價值用法</p>
+
 <div class="card" id="status">
   <h2>🌍 2026 環球票現況：先看這張</h2>
   <p class="sub" style="margin-bottom:8px;">「還能不能用哩程開一張環球票」在 2023–2025 之間被砍掉一大半，先確認產品還活著再規劃行程。</p>
@@ -280,8 +510,8 @@
   <div class="note"><b>還沒開帳號但值得開的：</b>日本航空 JMB（oneworld 環球票 14,001–20,000 哩商務只要 120k，全球最超值）、國泰 Asia Miles（5 中停 + 2 開口，亞洲出發最順）。這兩個要用環球票的話得先累積或轉點。</div>
 </div>
 
-<p class="foot">規則會變 —— 本頁資料查證於 2026-08-01，開票前務必以各航空官網為準。<br>
-資料來源：ANA / 長榮 / 新航 / 日航 / 國泰 / 澳航 官方網站與各大哩程媒體整理</p>
+<p class="foot">規則會變 —— 一般開票規則查證於 2026-08-09、環球票區查證於 2026-08-01，開票前務必以各航空官網為準。<br>
+標「本站實掃」的數字來自本站監控實際掃描結果；其餘為各航空官網與哩程媒體（OMAAT / Frequent Miler / AwardFares / 10xTravel 等）整理</p>
 
 <script>
 (function(){
