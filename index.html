@@ -40,6 +40,7 @@
   .badge.available{ background:var(--ok); color:#06281a; border:none; font-weight:700; } .badge.no_seats{ color:var(--bad); border-color:var(--bad); }
   .badge.paused{ color:var(--text2); } .badge.pending{ color:var(--accent); border-color:var(--accent); }
   .src-air{ color:var(--ok); } .src-sa{ color:var(--accent); }
+  .avlist{ color:var(--ok); font-size:0.82rem; margin-top:5px; line-height:1.55; }
   /* results table */
   .summary{ display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 12px; }
   .stat{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:7px 13px; font-size:0.88rem; }
@@ -323,7 +324,45 @@
   }
 
   // ---- watchlist (managed) ----
+  // 有位時把明細（日期/艙等/位數/航班）列在卡片下,像餐廳監控的「可訂日期」。
+  // 官網掃描的明細住在 results(ALL),用 計畫→航空 對回去;seats.aero 命中則直接用 watch.availability。
+  var LAST_WS=null;
+  var AIR_KEY={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"阿拉斯加"};
+  function availLines(w){
+    if(Array.isArray(w.availability)&&w.availability.length)
+      return w.availability.map(function(l){return esc(l);});
+    var key=AIR_KEY[w.program]; if(!key||!ALL.length)return [];
+    var routes={},multi=false;
+    String(w.origin||"").split(",").forEach(function(o){
+      String(w.dest||"").split(",").forEach(function(d){ routes[o.trim()+"→"+d.trim()]=1; });});
+    multi=Object.keys(routes).length>1;
+    var from=w.dateFrom||"", to=w.dateTo||w.dateFrom||"9999";
+    var g={},order=[];
+    ALL.forEach(function(r){
+      if(r.status!=="available")return;
+      if((r.airline||"").indexOf(key)<0)return;
+      var rt=(r.route||"").replace(/-/g,"→");
+      if(!routes[rt])return;
+      if(!r.date||r.date<from||r.date>to)return;
+      var k=r.date+"|"+rt+"|"+(r.cabin||"");
+      if(!g[k]){g[k]={date:r.date,route:rt,cabin:r.cabin||"",avail:r.avail||"有位",miles:r.miles||"",tax:r.tax||"",flights:[]};order.push(k);}
+      if(r.flight&&g[k].flights.indexOf(r.flight)<0)g[k].flights.push(r.flight);
+    });
+    return order.map(function(k){return g[k];})
+      .sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.cabin<b.cabin?-1:1);})
+      .map(function(a){
+        var bits=[a.date];
+        if(multi)bits.push(a.route);
+        if(a.cabin)bits.push(a.cabin);
+        bits.push(a.avail);
+        if(a.miles)bits.push(/^[\d,.]+k?$/i.test(a.miles)?a.miles+" 哩":a.miles);
+        if(a.tax)bits.push("稅 "+a.tax);
+        if(a.flights.length)bits.push(a.flights.slice(0,3).join("、")+(a.flights.length>3?" 等"+a.flights.length+"班":""));
+        return esc(bits.join(" · "));
+      });
+  }
   function renderWatch(ws){
+    LAST_WS=ws;
     var el=$("watchlist");
     if(!ws||!ws.length){el.innerHTML='<p class="msg">還沒有監控需求,用上面表單新增。</p>';return;}
     el.innerHTML="";
@@ -337,12 +376,16 @@
       var cabTxt=(w.cabins&&w.cabins.length)?w.cabins.map(function(c){return CABIN_LABEL[c]||c;}).join("/"):(w.cabin?(CABIN_LABEL[w.cabin]||w.cabin):"皆可");
       var mn=w.seatsMin!=null?w.seatsMin:w.seats, mx=w.seatsMax!=null?w.seatsMax:w.seats;
       var seatTxt=(mn===mx)?(mn+" 人"):(mn+"~"+mx+" 人");
+      var av=availLines(w), MAXAV=12;
+      var avHtml=av.length?('<div class="avlist">可訂：<br>'+av.slice(0,MAXAV).join("<br>")
+        +(av.length>MAXAV?"<br>… 還有 "+(av.length-MAXAV)+" 筆(見下方結果表)":"")+"</div>"):"";
       div.innerHTML='<div class="entry-head"><div>'
         +'<div class="entry-name">'+esc(w.origin)+" → "+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
         +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+esc(seatTxt)+" · "+esc(PROGRAM_LABEL[w.program]||w.program)
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
         +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")
-        +(w.notifyEmail?"<br>👤 "+esc(w.createdBy||w.notifyEmail)+" 建立 · 📧 有位通知寄 email":"")+"</div></div>"
+        +(w.notifyEmail?"<br>👤 "+esc(w.createdBy||w.notifyEmail)+" 建立 · 📧 有位通知寄 email":"")+"</div>"
+        +avHtml+"</div>"
         +'<div class="btn-row">'
         +((paused||ROLE!=="owner")?'':(w.source==="seatsaero"
           ?'<button class="scan" title="立刻掃一次這條需求（seats.aero），約 1 分鐘後狀態更新">⚡ 立即掃</button>'
@@ -687,6 +730,8 @@
         (r.cabin||"").split(/[\/、]/).forEach(function(c){c=c.trim();if(c&&cabins.indexOf(c)<0)cabins.push(c);}); });
       rebuildFilter("rf-air",airs); rebuildFilter("rf-cabin",cabins);
       renderResults();
+      // 需求卡的「可訂：」明細吃 ALL,結果表載入後回頭補渲染(首次登入時 watch 先到、results 後到)
+      if(LAST_WS&&LAST_WS.length)renderWatch(LAST_WS);
     });
   }
   function rebuildFilter(id,vals){
