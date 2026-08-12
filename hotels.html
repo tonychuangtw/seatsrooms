@@ -74,7 +74,7 @@
 </head>
 <body>
 <h1>🏨 飯店房況監控</h1>
-<p class="sub">萬豪 / 凱悅獎勵房＋現金價監控 · 點數房出現、現金跌破門檻都推播</p>
+<p class="sub">萬豪 / 凱悅獎勵房＋現金價監控 · 點數房出現、房價/點數降價都推播</p>
 <div class="nav">
   <a href="index.html">✈️ 機位主頁</a>
   <a href="rules.html">📖 規則庫</a>
@@ -92,9 +92,9 @@
       <div><label>連鎖</label><select id="h-chain">
         <option value="marriott" selected>萬豪 Marriott</option>
         <option value="hyatt">凱悅 Hyatt</option></select></div>
-      <div><label>飯店代碼(訂房網址裡那段)</label><input id="h-code" placeholder="例：CTSWI / CTSPH" maxlength="8" style="text-transform:uppercase"></div>
+      <div><label>國家 / 城市</label><input id="h-city" placeholder="例：北海道 Niseko" maxlength="40"></div>
     </div>
-    <label>飯店名稱</label>
+    <label>飯店名稱(英文較準,代碼系統會自動找)</label>
     <input id="h-name" placeholder="例：The Westin Rusutsu Resort" maxlength="60">
     <div class="row2">
       <div><label>入住</label><input id="h-in" type="date"></div>
@@ -106,10 +106,7 @@
         <option value="standard" selected>標準房(點數用)</option>
         <option value="suite">套房(升等確認用)</option></select></div>
     </div>
-    <div class="row2">
-      <div><label>現金價門檻(整段,選填;萬豪=日圓/凱悅=台幣)</label><input id="h-cashmax" inputmode="numeric" placeholder="例：600000 = 跌破 60萬通知"></div>
-      <div><label>協議價代號(選填,萬豪)</label><input id="h-corp" placeholder="例：APP" maxlength="10" style="text-transform:uppercase"></div>
-    </div>
+    <p class="msg" style="margin:6px 0 0">降價自動通知(跟上次掃描比)；萬豪自動帶 APP 協議價一起比。</p>
     <button id="h-submit" class="primary">加入監控</button>
     <p id="h-msg" class="msg"></p>
   </div>
@@ -124,7 +121,7 @@
 <p class="sub" id="r-sub">載入中…</p>
 <div class="hl" id="health"></div>
 <div id="results"><p class="msg">載入中…</p></div>
-<p class="foot">萬豪在 brain 直掃官網(登出價) · 凱悅掃描器 scout 開發中 · 頁面每 5 分自動刷新</p>
+<p class="foot">萬豪直掃官網(日圓自動換算台幣) · 凱悅點數走 rooms.aero、現金走 Google 官網價 · 每日 3 掃＋降價推播 · 頁面每 5 分自動刷新</p>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
@@ -178,7 +175,7 @@
       var nights=Math.round((new Date(w.checkOut)-new Date(w.checkIn))/86400000);
       div.innerHTML='<div class="entry-head"><div>'
         +'<div class="entry-name">'+esc(w.hotelName)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
-        +'<div class="entry-meta">'+esc(CHAIN_LABEL[w.chain]||w.chain)+" · "+esc(w.checkIn)+" ～ "+esc(w.checkOut)
+        +'<div class="entry-meta">'+esc(CHAIN_LABEL[w.chain]||w.chain)+(w.city?" · "+esc(w.city):"")+" · "+esc(w.checkIn)+" ～ "+esc(w.checkOut)
         +"（"+nights+" 晚 "+(w.adults||2)+" 人）"
         +(w.corpCode?" · 協議價 "+esc(w.corpCode):"")
         +(w.cashMax?" · 現金門檻 ¥"+Number(w.cashMax).toLocaleString():"")
@@ -205,18 +202,16 @@
 
   function submitForm(){
     var m=$("h-msg"); m.className="msg";
-    var code=$("h-code").value.trim().toUpperCase(), name=$("h-name").value.trim();
-    if(!/^[A-Z0-9]{4,8}$/.test(code)){m.textContent="飯店代碼要 4-8 碼英數(訂房網址裡那段,如 CTSWI)";m.className="msg err";return;}
+    var name=$("h-name").value.trim();
     if(!name){m.textContent="請填飯店名稱";m.className="msg err";return;}
     if(!$("h-in").value||!$("h-out").value||$("h-in").value>=$("h-out").value){m.textContent="入住要早於退房";m.className="msg err";return;}
     var btn=$("h-submit"); btn.disabled=true; m.textContent="送出中…";
-    api("POST","/api/rooms/watch",{chain:$("h-chain").value,hotelCode:code,hotelName:name,
+    api("POST","/api/rooms/watch",{chain:$("h-chain").value,hotelName:name,city:$("h-city").value.trim()||null,
       checkIn:$("h-in").value,checkOut:$("h-out").value,adults:parseInt($("h-adults").value,10),
-      roomType:$("h-rt").value,cashMax:$("h-cashmax").value.trim()||null,
-      corpCode:$("h-corp").value.trim()||null},function(e,d){
+      roomType:$("h-rt").value},function(e,d){
       btn.disabled=false;
       if(e){m.textContent="失敗："+e;m.className="msg err";return;}
-      m.textContent="✅ 已加入 "+name; renderWatch(d.hotels);
+      m.textContent="✅ 已加入 "+name+"（代碼下輪掃描自動解析）"; renderWatch(d.hotels);
     });
   }
 
@@ -234,8 +229,17 @@
     });
     el.innerHTML=html?'<span style="border:none;background:none;padding:3px 0">掃描健康：</span>'+html:"";
   }
-  function yen(n){return n==null?"—":"¥"+Number(n).toLocaleString();}
-  function money(n,cur){return n==null?"—":(cur==="TWD"?"NT$":"¥")+Number(n).toLocaleString();}
+  // 幣別統一（Tony：兩種幣別看不懂）：一律主顯 NT$；日圓來源有匯率就換算、原價小字附註
+  function pts(n){return n==null?"—":Number(n).toLocaleString()+" 點";}
+  function twdMain(n,cur,fx){
+    if(n==null)return "—";
+    if(cur==="TWD")return "NT$"+Number(n).toLocaleString();
+    if(fx)return "NT$"+Math.round(n*fx).toLocaleString();
+    return "¥"+Number(n).toLocaleString();
+  }
+  function origNote(n,cur,fx){
+    return (cur!=="TWD"&&fx&&n!=null)?'<span style="font-size:0.72rem;color:var(--dim)">（¥'+Number(n).toLocaleString()+'）</span>':"";
+  }
   function pts(n){return n==null?"—":Number(n).toLocaleString()+" 點";}
   function renderResults(d){
     var el=$("results"), hs=d.hotels||[];
@@ -246,17 +250,20 @@
       var nights=(h.nights||[]);
       var s=h.stay||{};
       var pOk=s.points&&s.points.avail, cOk=s.cash&&s.cash.avail;
-      var cpp=(pOk&&cOk&&s.points.perStay)?(s.cash.total/s.points.perStay).toFixed(2):null;
+      var fx=h.fxJpyTwd||null, ccur=(s.cash&&s.cash.cur)||"JPY";
+      var cashTwd=cOk?(ccur==="TWD"?s.cash.total:(fx?s.cash.total*fx:null)):null;
+      var cpp=(pOk&&cashTwd&&s.points.perStay)?(cashTwd/s.points.perStay).toFixed(2):null;
       var html='<div class="hotel-hd"><div><div class="hotel-name">'+esc(h.name)
-        +' <span class="badge">'+esc(CHAIN_LABEL[h.chain]||h.chain)+"</span></div>"
+        +' <span class="badge">'+esc(CHAIN_LABEL[h.chain]||h.chain)+"</span>"+(h.city?' <span class="badge">'+esc(h.city)+"</span>":"")+"</div>"
         +'<div class="entry-meta">'+esc(h.checkIn)+" ～ "+esc(h.checkOut)+"（"+nights.length+" 晚 "+(h.adults||2)+" 人）</div></div>"
         +(h.bookUrl?'<a class="book" target="_blank" rel="noopener" href="'+h.bookUrl+'">去官網訂 ↗</a>':"")+"</div>";
       html+='<div class="stayrow">'
-        +'<div class="stat '+(pOk?"ok":"na")+'">點數房(整段)<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 ¥'+cpp+"</span>":"")+"</div>"
-        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?money(s.cash.total,s.cash&&s.cash.cur):"無")+"</b>"
-          +(s.cash&&s.cash.night?'<span style="font-size:0.74rem;color:var(--text2)">'+money(s.cash.night,s.cash.cur)+"/晚</span>":"")+"</div>"
-        +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?yen(s.corp.total):"無")+"</b></div>":"")
-        +(s.suite?'<div class="stat ok">套房(每晚)<b>'+(s.suite.perNight!=null?pts(s.suite.perNight):"—")+"</b>"+(s.suite.cashNight!=null?'<span style="font-size:0.74rem;color:var(--text2)">'+yen(s.suite.cashNight)+"/晚</span>":"")+"</div>":"")
+        +'<div class="stat '+(pOk?"ok":"na")+'">點數房(整段)<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 NT$'+cpp+"</span>":"")+"</div>"
+        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?twdMain(s.cash.total,ccur,fx):"無")+"</b>"
+          +(cOk?origNote(s.cash.total,ccur,fx):"")
+          +(s.cash&&s.cash.night?'<span style="font-size:0.74rem;color:var(--text2)">'+twdMain(s.cash.night,ccur,fx)+"/晚</span>":"")+"</div>"
+        +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?twdMain(s.corp.total,"JPY",fx):"無")+"</b>"+(s.corp.avail?origNote(s.corp.total,"JPY",fx):"")+"</div>":"")
+        +(s.suite?'<div class="stat ok">套房(每晚)<b>'+(s.suite.perNight!=null?pts(s.suite.perNight):"—")+"</b>"+(s.suite.cashNight!=null?'<span style="font-size:0.74rem;color:var(--text2)">'+twdMain(s.suite.cashNight,"JPY",fx)+"/晚</span>":"")+"</div>":"")
         +"</div>"
         +((h.src||s.cash&&s.cash.src)?'<p class="msg" style="margin:0 0 4px">ℹ️ '+esc([h.src,s.cash&&s.cash.src?"現金 "+s.cash.src:null].filter(Boolean).join(" · "))+"</p>":"");
       if(nights.length){
@@ -265,7 +272,7 @@
         html+='</tr></thead><tbody><tr><th class="rowl">點數</th>';
         nights.forEach(function(n){html+='<td class="'+(n.points!=null?"on":"off")+'">'+(n.points!=null?(n.points/1000)+"k":"✕")+"</td>";});
         html+='</tr><tr><th class="rowl">現金</th>';
-        nights.forEach(function(n){html+='<td class="'+(n.cash!=null?"on":"off")+'">'+(n.cash!=null?"¥"+Math.round(n.cash/1000)+"k":"✕")+"</td>";});
+        nights.forEach(function(n){html+='<td class="'+(n.cash!=null?"on":"off")+'">'+(n.cash!=null?(fx?"NT$"+Math.round(n.cash*fx/1000)+"k":"¥"+Math.round(n.cash/1000)+"k"):"✕")+"</td>";});
         html+="</tr></tbody></table></div>";
         html+='<p class="msg" style="margin-top:4px">逐晚格子：整段訂不到時看是哪幾晚卡住（✕=該晚無房）</p>';
       }
