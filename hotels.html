@@ -107,7 +107,7 @@
         <option value="suite">套房(升等確認用)</option></select></div>
     </div>
     <div class="row2">
-      <div><label>現金價門檻(日圓,整段,選填)</label><input id="h-cashmax" inputmode="numeric" placeholder="例：600000 = 跌破 ¥60萬通知"></div>
+      <div><label>現金價門檻(整段,選填;萬豪=日圓/凱悅=台幣)</label><input id="h-cashmax" inputmode="numeric" placeholder="例：600000 = 跌破 60萬通知"></div>
       <div><label>協議價代號(選填,萬豪)</label><input id="h-corp" placeholder="例：APP" maxlength="10" style="text-transform:uppercase"></div>
     </div>
     <button id="h-submit" class="primary">加入監控</button>
@@ -235,6 +235,7 @@
     el.innerHTML=html?'<span style="border:none;background:none;padding:3px 0">掃描健康：</span>'+html:"";
   }
   function yen(n){return n==null?"—":"¥"+Number(n).toLocaleString();}
+  function money(n,cur){return n==null?"—":(cur==="TWD"?"NT$":"¥")+Number(n).toLocaleString();}
   function pts(n){return n==null?"—":Number(n).toLocaleString()+" 點";}
   function renderResults(d){
     var el=$("results"), hs=d.hotels||[];
@@ -252,11 +253,12 @@
         +(h.bookUrl?'<a class="book" target="_blank" rel="noopener" href="'+h.bookUrl+'">去官網訂 ↗</a>':"")+"</div>";
       html+='<div class="stayrow">'
         +'<div class="stat '+(pOk?"ok":"na")+'">點數房(整段)<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 ¥'+cpp+"</span>":"")+"</div>"
-        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?yen(s.cash.total):"無")+"</b></div>"
+        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?money(s.cash.total,s.cash&&s.cash.cur):"無")+"</b>"
+          +(s.cash&&s.cash.night?'<span style="font-size:0.74rem;color:var(--text2)">'+money(s.cash.night,s.cash.cur)+"/晚</span>":"")+"</div>"
         +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?yen(s.corp.total):"無")+"</b></div>":"")
         +(s.suite?'<div class="stat ok">套房(每晚)<b>'+(s.suite.perNight!=null?pts(s.suite.perNight):"—")+"</b>"+(s.suite.cashNight!=null?'<span style="font-size:0.74rem;color:var(--text2)">'+yen(s.suite.cashNight)+"/晚</span>":"")+"</div>":"")
         +"</div>"
-        +(h.src?'<p class="msg" style="margin:0 0 4px">ℹ️ '+esc(h.src)+"</p>":"");
+        +((h.src||s.cash&&s.cash.src)?'<p class="msg" style="margin:0 0 4px">ℹ️ '+esc([h.src,s.cash&&s.cash.src?"現金 "+s.cash.src:null].filter(Boolean).join(" · "))+"</p>":"");
       if(nights.length){
         html+='<div class="ngrid"><table><thead><tr><th class="rowl"></th>';
         nights.forEach(function(n){var p=n.date.split("-");html+="<th>"+p[1]+"/"+p[2]+"</th>";});
