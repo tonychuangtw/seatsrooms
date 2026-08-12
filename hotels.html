@@ -61,6 +61,11 @@
   .stayrow{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
   .stat{ background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:7px 13px; font-size:0.85rem; }
   .stat b{ font-size:1.05rem; display:block; } .stat.ok b{ color:var(--ok); } .stat.na b{ color:var(--dim); }
+  .stat.glow{ border-color:var(--ok); background:var(--okbg); box-shadow:0 0 14px #4cc38a66; }
+  .stat.glow b{ color:var(--ok); }
+  .stat.meh b{ color:var(--warn); }
+  .vtag{ font-size:0.7rem; border-radius:99px; padding:0 6px; margin-left:4px; }
+  .vtag.g{ background:var(--ok); color:#06281a; font-weight:700; } .vtag.m{ color:var(--warn); border:1px solid #5a441a; } .vtag.b{ color:var(--dim); border:1px solid var(--border); }
   .ngrid{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .ngrid table{ border-collapse:separate; border-spacing:2px; font-size:0.74rem; }
   .ngrid th{ font-weight:400; color:var(--text2); font-size:0.68rem; padding:0 3px; text-align:center; border:none; }
@@ -86,6 +91,23 @@
 </div>
 
 <div id="app" class="hidden">
+  <div class="card">
+    <h2>🔎 城市探索（還沒決定住哪間）</h2>
+    <p class="msg" style="margin:2px 0 6px">輸入城市＋日期，一次比整個城市萬豪／凱悅的點數＋現金（自動換算台幣）。兩集團都沒有的城市可勾「含非集團」用 Google 找。掃一輪約 1-3 分鐘。</p>
+    <div class="row2">
+      <div><label>城市(英文較準)</label><input id="xh-city" placeholder="例：Sapporo / Tokyo / Bangkok" maxlength="60"></div>
+      <div><label>人數</label><select id="xh-adults"></select></div>
+    </div>
+    <div class="row2">
+      <div><label>入住</label><input id="xh-in" type="date"></div>
+      <div><label>退房</label><input id="xh-out" type="date"></div>
+    </div>
+    <label style="display:inline-flex;gap:6px;align-items:center;color:var(--text);margin-top:8px"><input type="checkbox" id="xh-others" style="width:auto"> 含非兩集團的酒店（Google Hotels，只有現金價）</label>
+    <button id="xh-go" class="primary">🔎 開始探索</button>
+    <p id="xh-msg" class="msg"></p>
+    <div id="xh-out"></div>
+  </div>
+
   <div class="card">
     <h2>➕ 新增飯店監控</h2>
     <div class="row2">
@@ -231,14 +253,28 @@
   }
   // 幣別統一（Tony：兩種幣別看不懂）：一律主顯 NT$；日圓來源有匯率就換算、原價小字附註
   function pts(n){return n==null?"—":Number(n).toLocaleString()+" 點";}
-  function twdMain(n,cur,fx){
+  var FXMAP={};  // 1 單位外幣 = X 台幣（掃描器附在 results 根，任何 hotel currency 都吃）
+  function twdOf(n,cur){ if(n==null)return null; if(cur==="TWD")return n;
+    return FXMAP[cur]?Math.round(n*FXMAP[cur]):null; }
+  function twdMain(n,cur){
     if(n==null)return "—";
+    var t=twdOf(n,cur);
     if(cur==="TWD")return "NT$"+Number(n).toLocaleString();
-    if(fx)return "NT$"+Math.round(n*fx).toLocaleString();
-    return "¥"+Number(n).toLocaleString();
+    if(t!=null)return "NT$"+t.toLocaleString();
+    return esc(cur||"")+" "+Number(n).toLocaleString();
   }
-  function origNote(n,cur,fx){
-    return (cur!=="TWD"&&fx&&n!=null)?'<span style="font-size:0.72rem;color:var(--dim)">（¥'+Number(n).toLocaleString()+'）</span>':"";
+  function origNote(n,cur){
+    return (cur&&cur!=="TWD"&&n!=null)?'<span style="font-size:0.72rem;color:var(--dim)">（'+esc(cur)+' '+Number(n).toLocaleString()+'）</span>':"";
+  }
+  // 點數值不值得換（每點台幣價值，門檻按集團的點數行情）：亮=值得換、黃=普通、暗=不划算
+  var VAL_TH={marriott:{good:0.35,ok:0.25},hyatt:{good:0.65,ok:0.45}};
+  function valClass(chain,cpp){
+    var t=VAL_TH[chain]; if(!t||cpp==null)return "";
+    return cpp>=t.good?"glow":(cpp>=t.ok?"meh":"");
+  }
+  function valTag(chain,cpp){
+    var t=VAL_TH[chain]; if(!t||cpp==null)return "";
+    return cpp>=t.good?'<span class="vtag g">✨ 值得換</span>':(cpp>=t.ok?'<span class="vtag m">普通</span>':'<span class="vtag b">不划算</span>');
   }
   function pts(n){return n==null?"—":Number(n).toLocaleString()+" 點";}
   function renderResults(d){
@@ -250,20 +286,21 @@
       var nights=(h.nights||[]);
       var s=h.stay||{};
       var pOk=s.points&&s.points.avail, cOk=s.cash&&s.cash.avail;
-      var fx=h.fxJpyTwd||null, ccur=(s.cash&&s.cash.cur)||"JPY";
-      var cashTwd=cOk?(ccur==="TWD"?s.cash.total:(fx?s.cash.total*fx:null)):null;
-      var cpp=(pOk&&cashTwd&&s.points.perStay)?(cashTwd/s.points.perStay).toFixed(2):null;
+      var ccur=(s.cash&&s.cash.cur)||h.hcur||"JPY", hcur=h.hcur||ccur;
+      var cashTwd=cOk?twdOf(s.cash.total,ccur):null;
+      var cppN=(pOk&&cashTwd&&s.points.perStay)?(cashTwd/s.points.perStay):null;
+      var cpp=cppN!=null?cppN.toFixed(2):null;
       var html='<div class="hotel-hd"><div><div class="hotel-name">'+esc(h.name)
         +' <span class="badge">'+esc(CHAIN_LABEL[h.chain]||h.chain)+"</span>"+(h.city?' <span class="badge">'+esc(h.city)+"</span>":"")+"</div>"
         +'<div class="entry-meta">'+esc(h.checkIn)+" ～ "+esc(h.checkOut)+"（"+nights.length+" 晚 "+(h.adults||2)+" 人）</div></div>"
         +(h.bookUrl?'<a class="book" target="_blank" rel="noopener" href="'+h.bookUrl+'">去官網訂 ↗</a>':"")+"</div>";
       html+='<div class="stayrow">'
-        +'<div class="stat '+(pOk?"ok":"na")+'">點數房(整段)<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 NT$'+cpp+"</span>":"")+"</div>"
-        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?twdMain(s.cash.total,ccur,fx):"無")+"</b>"
-          +(cOk?origNote(s.cash.total,ccur,fx):"")
-          +(s.cash&&s.cash.night?'<span style="font-size:0.74rem;color:var(--text2)">'+twdMain(s.cash.night,ccur,fx)+"/晚</span>":"")+"</div>"
-        +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?twdMain(s.corp.total,"JPY",fx):"無")+"</b>"+(s.corp.avail?origNote(s.corp.total,"JPY",fx):"")+"</div>":"")
-        +(s.suite?'<div class="stat ok">套房(每晚)<b>'+(s.suite.perNight!=null?pts(s.suite.perNight):"—")+"</b>"+(s.suite.cashNight!=null?'<span style="font-size:0.74rem;color:var(--text2)">'+twdMain(s.suite.cashNight,"JPY",fx)+"/晚</span>":"")+"</div>":"")
+        +'<div class="stat '+(pOk?("ok "+valClass(h.chain,cppN)):"na")+'">點數房(整段)'+(pOk?valTag(h.chain,cppN):"")+'<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 NT$'+cpp+"</span>":"")+"</div>"
+        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?twdMain(s.cash.total,ccur):"無")+"</b>"
+          +(cOk?origNote(s.cash.total,ccur):"")
+          +(s.cash&&s.cash.night?'<span style="font-size:0.74rem;color:var(--text2)">'+twdMain(s.cash.night,ccur)+"/晚</span>":"")+"</div>"
+        +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?twdMain(s.corp.total,s.corp.cur||hcur):"無")+"</b>"+(s.corp.avail?origNote(s.corp.total,s.corp.cur||hcur):"")+"</div>":"")
+        +(s.suite?'<div class="stat ok">套房(每晚)<b>'+(s.suite.perNight!=null?pts(s.suite.perNight):"—")+"</b>"+(s.suite.cashNight!=null?'<span style="font-size:0.74rem;color:var(--text2)">'+twdMain(s.suite.cashNight,"JPY")+"/晚</span>":"")+"</div>":"")
         +"</div>"
         +((h.src||s.cash&&s.cash.src)?'<p class="msg" style="margin:0 0 4px">ℹ️ '+esc([h.src,s.cash&&s.cash.src?"現金 "+s.cash.src:null].filter(Boolean).join(" · "))+"</p>":"");
       if(nights.length){
@@ -272,7 +309,7 @@
         html+='</tr></thead><tbody><tr><th class="rowl">點數</th>';
         nights.forEach(function(n){html+='<td class="'+(n.points!=null?"on":"off")+'">'+(n.points!=null?(n.points/1000)+"k":"✕")+"</td>";});
         html+='</tr><tr><th class="rowl">現金</th>';
-        nights.forEach(function(n){html+='<td class="'+(n.cash!=null?"on":"off")+'">'+(n.cash!=null?(fx?"NT$"+Math.round(n.cash*fx/1000)+"k":"¥"+Math.round(n.cash/1000)+"k"):"✕")+"</td>";});
+        nights.forEach(function(n){var t=twdOf(n.cash,hcur);html+='<td class="'+(n.cash!=null?"on":"off")+'">'+(n.cash!=null?(t!=null?"NT$"+Math.round(t/1000)+"k":esc(hcur)+" "+Math.round(n.cash/1000)+"k"):"✕")+"</td>";});
         html+="</tr></tbody></table></div>";
         html+='<p class="msg" style="margin-top:4px">逐晚格子：整段訂不到時看是哪幾晚卡住（✕=該晚無房）</p>';
       }
@@ -287,6 +324,7 @@
     }
     api("GET","/api/rooms/results",null,function(e,d){
       if(e){$("results").innerHTML='<p class="msg err">載入結果失敗：'+esc(e)+"</p>";return;}
+      FXMAP=d.fx||{};
       renderHealth(d.health);
       $("r-sub").textContent=d.updated?("最後更新 "+fmtTime(Date.parse(d.updated))):"還沒掃過";
       renderResults(d);
@@ -304,6 +342,60 @@
     });
   });
 
+  // ---- 城市探索 ----
+  var XH_TIMER=null;
+  function exploreGo(){
+    var m=$("xh-msg"); m.className="msg";
+    var city=$("xh-city").value.trim();
+    if(!city){m.textContent="請填城市";m.className="msg err";return;}
+    if(!$("xh-in").value||!$("xh-out").value||$("xh-in").value>=$("xh-out").value){m.textContent="入住要早於退房";m.className="msg err";return;}
+    var btn=$("xh-go"); btn.disabled=true; m.textContent="已觸發，掃描中…（萬豪＋凱悅"+($("xh-others").checked?"＋Google":"")+"，約 1-3 分鐘）";
+    $("xh-out").innerHTML="";
+    api("POST","/api/rooms/explore",{city:city,checkIn:$("xh-in").value,checkOut:$("xh-out").value,
+      adults:parseInt($("xh-adults").value,10),others:$("xh-others").checked},function(e){
+      if(e){m.textContent="失敗："+e;m.className="msg err";btn.disabled=false;return;}
+      var tries=0;
+      if(XH_TIMER)clearInterval(XH_TIMER);
+      XH_TIMER=setInterval(function(){
+        tries++;
+        api("GET","/api/rooms/explore",null,function(e2,d){
+          if(e2||!d)return;
+          if(d.status==="done"){clearInterval(XH_TIMER);btn.disabled=false;
+            m.textContent="✅ 完成，共 "+(d.rows||[]).length+" 間（"+(d.nights||"?")+" 晚）";renderExplore(d);}
+          else if(d.status==="error"){clearInterval(XH_TIMER);btn.disabled=false;
+            m.textContent="探索失敗："+(d.error||"未知");m.className="msg err";}
+          else if(tries>25){clearInterval(XH_TIMER);btn.disabled=false;
+            m.textContent="逾時了，稍後再按一次看結果";}
+        });
+      },12000);
+    });
+  }
+  function renderExplore(d){
+    var rows=d.rows||[], el=$("xh-out");
+    if(!rows.length){el.innerHTML='<p class="msg">這個城市這期間兩集團都查不到（或名稱拼法不對，換英文試試）。</p>';return;}
+    var CH={marriott:"萬豪",hyatt:"凱悅",other:"其他"};
+    var html='<table><thead><tr><th>飯店</th><th>集團</th><th>點數/整段</th><th>現金/晚</th><th>每點價值</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r,i){
+      var vc=valClass(r.chain,r.cpp), tag=valTag(r.chain,r.cpp);
+      html+='<tr'+(vc==="glow"?' style="background:var(--okbg)"':'')+'><td class="main" data-l="飯店">'+esc(r.name)+' <span class="flt" style="color:var(--dim);font-size:0.72rem">'+esc(r.src||"")+"</span></td>"
+        +'<td data-l="集團">'+esc(CH[r.chain]||r.chain)+"</td>"
+        +'<td data-l="點數">'+(r.ptsStay!=null?pts(r.ptsStay):"—")+"</td>"
+        +'<td data-l="現金">'+(r.cashNightTwd!=null?"NT$"+r.cashNightTwd.toLocaleString():"—")+"</td>"
+        +'<td data-l="每點">'+(r.cpp!=null?("NT$"+r.cpp.toFixed(2)+" "+tag):"—")+"</td>"
+        +'<td data-l="">'+(r.chain!=="other"?'<button class="scan xh-w" data-i="'+i+'">🔔 監控</button>':"")+"</td></tr>";
+    });
+    el.innerHTML=html+"</tbody></table>";
+    el.querySelectorAll(".xh-w").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var r=rows[parseInt(btn.getAttribute("data-i"),10)];
+        $("h-chain").value=r.chain; $("h-name").value=r.name; $("h-city").value=(d.params&&d.params.city)||"";
+        $("h-in").value=(d.params&&d.params.checkIn)||""; $("h-out").value=(d.params&&d.params.checkOut)||"";
+        $("h-msg").textContent="已帶入 "+r.name+"，按「加入監控」送出"; $("h-msg").className="msg";
+        $("h-submit").scrollIntoView({behavior:"smooth",block:"center"});
+      });
+    });
+  }
+
   function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadResults();}
   function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESS_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
 
@@ -313,9 +405,10 @@
       google.accounts.id.initialize({client_id:CLIENT_ID,callback:function(resp){try{sessionStorage.setItem(TOKEN_KEY,resp.credential);}catch(e){}showApp();}});
       google.accounts.id.renderButton($("gsi-btn"),{theme:"filled_black",size:"large",text:"signin_with"});
     }
-    (function(){ var s=$("h-adults");
-      for(var i=1;i<=8;i++){ var o=document.createElement("option"); o.value=i; o.textContent=i+" 人"; if(i===2)o.selected=true; s.appendChild(o); } })();
+    (function(){ ["h-adults","xh-adults"].forEach(function(id){ var s=$(id);
+      for(var i=1;i<=8;i++){ var o=document.createElement("option"); o.value=i; o.textContent=i+" 人"; if(i===2)o.selected=true; s.appendChild(o); } }); })();
     $("h-submit").addEventListener("click",submitForm);
+    $("xh-go").addEventListener("click",exploreGo);
     initGsi(); if(token())showApp(); else loadResults();
   });
 })();
