@@ -130,7 +130,7 @@
       <div><label>哩程計畫</label><select id="x-program">
         <option value="ana" selected>ANA 全日空</option><option value="eva">長榮 Infinity</option>
         <option value="cal">華航 華夏</option><option value="starlux">星宇 COSMILE</option>
-        <option value="alaska">阿拉斯加 Mileage Plan</option></select></div>
+        <option value="alaska">阿拉斯加 Mileage Plan</option><option value="asiamiles">國泰 Asia Miles</option></select></div>
     </div>
     <div class="row2">
       <div><label>日期(起)</label><input id="x-from" type="date"></div>
@@ -216,7 +216,7 @@
     <select id="f-program">
       <option value="ana" selected>ANA 全日空</option><option value="eva">長榮 Infinity</option>
       <option value="cal">華航 華夏</option><option value="starlux">星宇 COSMILE</option>
-      <option value="alaska">阿拉斯加 Mileage Plan</option>
+      <option value="alaska">阿拉斯加 Mileage Plan</option><option value="asiamiles">國泰 Asia Miles</option>
     </select>
     <div class="row2">
       <div><label>資料來源</label><select id="f-source">
@@ -275,7 +275,7 @@
   var CLIENT_ID="481860179039-gb37qsdogd4vgnn2g5umh73jen02avj4.apps.googleusercontent.com";
   var API="https://claudebot500.tailfcf67f.ts.net", TOKEN_KEY="seatsrooms.token", SESS_KEY="seatsrooms.sess";
   var CABIN_LABEL={economy:"經濟",premium:"豪經",business:"商務",first:"頭等"};
-  var PROGRAM_LABEL={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"Alaska"};
+  var PROGRAM_LABEL={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"Alaska",asiamiles:"亞萬"};
   var SOURCE_LABEL={airline:"官網",seatsaero:"seats.aero"};
   var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位",check:"🟡 官網有航班(待確認)",waitlist:"⏳ 僅候補",partial:"🟡 部分有位(可分批)"};
   function $(id){return document.getElementById(id);}
@@ -349,7 +349,7 @@
   // 有位時把明細（日期/艙等/位數/航班）列在卡片下,像餐廳監控的「可訂日期」。
   // 官網掃描的明細住在 results(ALL),用 計畫→航空 對回去;seats.aero 命中則直接用 watch.availability。
   var LAST_WS=null;
-  var AIR_KEY={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"阿拉斯加"};
+  var AIR_KEY={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"阿拉斯加",asiamiles:"國泰"};
   function availLines(w){
     if(Array.isArray(w.availability)&&w.availability.length)
       return w.availability.map(function(l){return esc(l);});
@@ -558,7 +558,7 @@
       +'<option value="economy">經濟</option><option value="">皆可</option></select></div>'
       +'<div><label>哩程計畫</label><select class="l-p">'
       +'<option value="ana">ANA</option><option value="eva">長榮</option><option value="cal">華航</option>'
-      +'<option value="starlux">星宇</option><option value="alaska">Alaska</option></select></div></div>';
+      +'<option value="starlux">星宇</option><option value="alaska">Alaska</option><option value="asiamiles">亞萬</option></select></div></div>';
     d.querySelector(".rm").addEventListener("click",function(){ d.remove(); renumberLegs(); });
     // 兩端都填好就顯示距離與瓶頸標記(跟後端同一條 2,500 哩線)
     function upd(){
@@ -875,6 +875,10 @@
     $("x-submit").addEventListener("click",explore);
     initGsi(); if(token())showApp();
     $("f-submit").addEventListener("click",submitForm);
+    // 亞萬還沒有官網掃描：選了自動切 seats.aero（Alaska 代理視角），後端也會強制
+    $("f-program").addEventListener("change",function(){
+      if(this.value==="asiamiles"){$("f-source").value="seatsaero";
+        $("f-msg").textContent="亞萬走 seats.aero（Alaska 代理視角），實際可訂以國泰官網為準";$("f-msg").className="msg";}});
     $("test-push").addEventListener("click",function(){
       var m=$("push-msg"); m.textContent="發送中…"; m.className="msg";
       api("POST","/api/seats/test-push",{},function(e){ if(e){m.textContent="推播失敗："+e;m.className="msg err";return;} m.textContent="✅ 已發送,看 @seatsrroomsbot"; });});
