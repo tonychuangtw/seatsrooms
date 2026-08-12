@@ -41,6 +41,21 @@
   .badge.paused{ color:var(--text2); } .badge.pending{ color:var(--accent); border-color:var(--accent); }
   .src-air{ color:var(--ok); } .src-sa{ color:var(--accent); }
   .avlist{ color:var(--ok); font-size:0.82rem; margin-top:5px; line-height:1.55; }
+  .badge.new{ background:#f5a524; color:#241a05; border:none; font-weight:700; }
+  /* 掃描健康燈 */
+  .hl{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; font-size:0.8rem; color:var(--text2); }
+  .hl span{ border:1px solid var(--border); border-radius:99px; padding:3px 10px; background:var(--card); }
+  .hl i{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  .hl .g{ background:var(--ok); } .hl .y{ background:#f5a524; } .hl .r{ background:var(--bad); }
+  /* 需求卡：近14天有位時間軸 */
+  .tl{ display:flex; gap:2px; margin-top:6px; align-items:center; }
+  .tl i{ width:11px; height:11px; border-radius:2px; background:#1e1e26; }
+  .tl .t-av{ background:var(--ok); } .tl .t-pa{ background:#f5a524; }
+  .tl .t-ck{ background:#7a642a; } .tl .t-no{ background:#2c2c36; }
+  .tl .t-un{ background:transparent; border:1px solid var(--border); }
+  .tl-l{ font-size:0.72rem; color:var(--dim); margin-right:4px; }
+  .book{ color:var(--accent); text-decoration:none; font-size:0.8rem; white-space:nowrap; }
+  .cpm{ color:var(--text2); font-size:0.76rem; } .cpm.good{ color:var(--ok); }
   /* results table */
   .summary{ display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 12px; }
   .stat{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:7px 13px; font-size:0.88rem; }
@@ -91,6 +106,7 @@
     tbody tr{ border:1px solid var(--border); border-radius:10px; margin:8px 0; padding:4px 2px; }
     tbody td{ border:none; padding:3px 10px; } tbody td::before{ content:attr(data-l)"："; color:var(--text2); font-size:0.76rem; }
     tbody td.main::before{ content:""; } tbody td.main{ font-weight:700; font-size:0.96rem; padding-top:8px; }
+    tbody td.nolab::before{ content:""; } tbody td:empty{ display:none; }
   }
 </style>
 </head>
@@ -242,6 +258,7 @@
 
 <h2 style="margin-top:26px;">🎯 監控結果(逐段明細) <button id="refresh-btn" class="pause" style="vertical-align:middle;margin-left:8px;">🔄 立即刷新</button></h2>
 <p class="sub" id="res-sub">載入中…</p>
+<div class="hl" id="health"></div>
 <div class="summary" id="summary"></div>
 <div class="controls">
   <label>航空 <select id="rf-air"><option value="">全部</option></select></label>
@@ -256,14 +273,19 @@
 (function () {
   "use strict";
   var CLIENT_ID="481860179039-gb37qsdogd4vgnn2g5umh73jen02avj4.apps.googleusercontent.com";
-  var API="https://claudebot500.tailfcf67f.ts.net", TOKEN_KEY="seatsrooms.token";
+  var API="https://claudebot500.tailfcf67f.ts.net", TOKEN_KEY="seatsrooms.token", SESS_KEY="seatsrooms.sess";
   var CABIN_LABEL={economy:"經濟",premium:"豪經",business:"商務",first:"頭等"};
   var PROGRAM_LABEL={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"Alaska"};
   var SOURCE_LABEL={airline:"官網",seatsaero:"seats.aero"};
-  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位",check:"🟡 官網有航班(待確認)",waitlist:"⏳ 僅候補"};
+  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位",check:"🟡 官網有航班(待確認)",waitlist:"⏳ 僅候補",partial:"🟡 部分有位(可分批)"};
   function $(id){return document.getElementById(id);}
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-  function token(){try{return sessionStorage.getItem(TOKEN_KEY);}catch(e){return null;}}
+  function token(){try{return localStorage.getItem(SESS_KEY)||sessionStorage.getItem(TOKEN_KEY);}catch(e){return null;}}
+  // 長效 session（2026-08-12）：Google ID token 一小時就過期，登入後拿它換一顆
+  // 後端簽的 30 天 token 存 localStorage；之後每次開頁再換新（滾動續期），不用一直重登。
+  function refreshSession(){ if(!token())return;
+    api("POST","/api/session",{},function(e,d){ if(e||!d||!d.token)return;
+      try{localStorage.setItem(SESS_KEY,d.token);sessionStorage.removeItem(TOKEN_KEY);}catch(x){} }); }
   function fmtTime(ms){if(!ms)return "—";var d=new Date(ms);return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
   // 機場座標(與後端 scripts/seatsrooms-monitor/airports-ll.json 同一份),只用來即時顯示段距離
   var AP={};
@@ -361,6 +383,21 @@
         return esc(bits.join(" · "));
       });
   }
+  // 近14天有位時間軸：history 只記「變化點」(狀態或有位筆數變了才記一筆)，
+  // 這裡展開成逐日格子；某日之前完全沒紀錄 = 未知(空格)。
+  var TL_CLS={available:"t-av",partial:"t-pa",check:"t-ck",waitlist:"t-ck",no_seats:"t-no"};
+  function histTimeline(w){
+    var h=w.history||[]; if(!h.length)return "";
+    var out='<div class="tl" aria-label="近14天狀態"><span class="tl-l">14天</span>',now=new Date();
+    for(var i=13;i>=0;i--){
+      var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+      var dayEnd=d.getTime()+86399999,st=null;
+      for(var j=h.length-1;j>=0;j--){ if(h[j].t<=dayEnd){st=h[j].status;break;} }
+      var lbl=(d.getMonth()+1)+"/"+d.getDate();
+      out+='<i class="'+(st?(TL_CLS[st]||"t-un"):"t-un")+'" title="'+lbl+" "+esc(st?(STATUS_LABEL[st]||st):"無紀錄")+'"></i>';
+    }
+    return out+"</div>";
+  }
   function renderWatch(ws){
     LAST_WS=ws;
     var el=$("watchlist");
@@ -385,7 +422,7 @@
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
         +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")
         +(w.notifyEmail?"<br>👤 "+esc(w.createdBy||w.notifyEmail)+" 建立 · 📧 有位通知寄 email":"")+"</div>"
-        +avHtml+"</div>"
+        +avHtml+histTimeline(w)+"</div>"
         +'<div class="btn-row">'
         +((paused||ROLE!=="owner")?'':(w.source==="seatsaero"
           ?'<button class="scan" title="立刻掃一次這條需求（seats.aero），約 1 分鐘後狀態更新">⚡ 立即掃</button>'
@@ -474,7 +511,7 @@
           +'<td data-l="位數" class="rt">'+esc(String(h.seats))+'</td>'
           +'<td data-l="哩程">'+esc(h.miles||"")+'</td>'
           +'<td data-l="來源" class="flt">'+esc(h.source)+(h.direct==="direct"?" 直飛":" 轉機")+'</td>'
-          +'<td data-l=""><button class="scan xadd" data-i="'+esc(rl)+"|"+i+'">➕ 加進行程</button></td></tr>';
+          +'<td class="nolab" data-l=""><button class="scan xadd" data-i="'+esc(rl)+"|"+i+'">➕ 加進行程</button> <button class="scan xw" data-i="'+esc(rl)+"|"+i+'">🔔 監控</button></td></tr>';
       });
       html+='</tbody></table>';
     });
@@ -486,6 +523,21 @@
         addLeg({origin:h.origin,dest:h.dest,dateFrom:h.date,dateTo:h.date,cabin:cabMap[h.cabin]});
         btn.textContent="✅ 已加入";
         $("t-legs").scrollIntoView({behavior:"smooth",block:"center"});
+      });
+    });
+    // 🔔 直接把這段建成單點監控，不用回表單重填。eva 官網掃描還沒上線，只能走 seats.aero
+    el.querySelectorAll(".xw").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var p=btn.getAttribute("data-i").split("|"), h=g[p[0]][parseInt(p[1],10)];
+        var cabMap={Y:"economy",W:"premium",J:"business",F:"first"};
+        var prog=$("x-program").value, n=parseInt($("x-seats").value,10)||1;
+        btn.disabled=true; btn.textContent="⏳…";
+        api("POST","/api/seats/watch",{origin:h.origin,dest:h.dest,dateFrom:h.date,dateTo:h.date,
+          cabins:cabMap[h.cabin]?[cabMap[h.cabin]]:[],seatsMin:n,seatsMax:n,program:prog,
+          source:prog==="eva"?"seatsaero":"airline",scanPerDay:2},function(e){
+          if(e){alert("建監控失敗："+e);btn.disabled=false;btn.textContent="🔔 監控";return;}
+          btn.textContent="✅ 已建監控"; refreshWatch();
+        });
       });
     });
   }
@@ -684,8 +736,38 @@
     });
   }
 
-  // ---- results table (public) ----
+  // ---- results table ----
   var ALL=[];
+  // 一鍵跳官網開票：各家獎勵查詢頁照 1800 掃描器實際用的入口；Alaska 可帶航線/日期參數預填
+  function bookUrl(r){
+    var a=r.airline||"";
+    if(a.indexOf("ANA")>=0)return "https://www.ana.co.jp/other/int/meta/0771.html?CONNECTION_KIND=tw&LANG=ch";
+    if(a.indexOf("華航")>=0)return "https://membersonair.china-airlines.com/AwardTicketSeat/Award/Index";
+    if(a.indexOf("星宇")>=0)return "https://www.starlux-airlines.com/zh-TW/redeem-award-ticket/index";
+    if(a.indexOf("阿拉斯加")>=0||a.indexOf("Alaska")>=0){
+      var m=(r.route||"").match(/^([A-Z]{3})→([A-Z]{3})$/);
+      if(m&&/^\d{4}-\d{2}-\d{2}$/.test(r.date||""))
+        return "https://www.alaskaair.com/search/results?A=1&O="+m[1]+"&D="+m[2]+"&OD="+r.date+"&OT=Award&RT=false";
+      return "https://www.alaskaair.com/";
+    }
+    if(a.indexOf("長榮")>=0)return "https://www.evaair.com/zh-tw/infinity-mileagelands/use-your-miles/";
+    return null;
+  }
+  // 掃描健康燈：<14h 綠(每日2掃的正常節奏)、14-28h 黃、更久或沒資料=紅
+  var HL_NAME={cal:"華航",ana:"ANA",alaska:"Alaska",starlux:"星宇"};
+  function fmtAge(ms){var h=Math.floor(ms/3600e3);if(h<1)return Math.max(1,Math.round(ms/60e3))+" 分前";if(h<48)return h+" 小時前";return Math.floor(h/24)+" 天前";}
+  function renderHealth(h){
+    var el=$("health"); if(!el)return;
+    if(!h){el.innerHTML="";return;}
+    var now=Date.now(),html="";
+    Object.keys(HL_NAME).forEach(function(p){
+      if(!(p in h))return;
+      var last=h[p]&&h[p].last, age=last!=null?now-last:null;
+      var cls=age==null?"r":(age<14*3600e3?"g":(age<28*3600e3?"y":"r"));
+      html+='<span><i class="'+cls+'"></i>'+HL_NAME[p]+" "+(age!=null?fmtAge(age):"沒掃到")+"</span>";
+    });
+    el.innerHTML=html?'<span style="border:none;background:none;padding:3px 0">掃描健康：</span>'+html:"";
+  }
   function renderResults(){
     var air=$("rf-air").value, cabin=$("rf-cabin").value, availOnly=$("rf-availonly").checked;
     var rows=ALL.filter(function(r){
@@ -699,13 +781,19 @@
     order.forEach(function(a){
       var g=groups[a],navail=g.filter(function(r){return r.status==="available";}).length;
       html+='<div class="grp">'+esc(a)+' <span class="prog">'+esc(g[0].program||"")+' · 有位 '+navail+'/'+g.length+'</span></div>';
-      html+='<table><thead><tr><th>路線</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th></tr></thead><tbody>';
+      html+='<table><thead><tr><th>路線</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th><th></th></tr></thead><tbody>';
       g.forEach(function(r){
         var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
-        var sb=r.status==="available"?'<span class="badge available">有位</span>':(r.status==="waitlist"?'<span class="badge pending">⏳候補</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending">待確認</span>')));
+        var sb=r.status==="available"?(r.partial?'<span class="badge partial">有位·分批</span>':'<span class="badge available">有位</span>'):(r.status==="waitlist"?'<span class="badge pending">⏳候補</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending">待確認</span>')));
+        // 🆕 = 24 小時內剛從無位轉有位的列（aggregate 記 firstAvail）
+        if(r.firstAvail&&(Date.now()-r.firstAvail)<86400000)sb='<span class="badge new">🆕</span> '+sb;
+        var milesHtml=esc(r.miles||"");
+        if(r.cashTwd)milesHtml+='<div class="cpm'+(r.cpm&&r.cpm>=0.8?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
+        var bk=(r.status==="available"||r.status==="waitlist")?bookUrl(r):null;
         html+='<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)+'</td><td data-l="日期">'+esc(r.date||"")
           +'</td><td data-l="艙等">'+esc(r.cabin||"")+'</td><td data-l="狀態">'+sb+'</td><td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")
-          +'</td><td data-l="哩程">'+esc(r.miles||"")+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")+'</td></tr>';
+          +'</td><td data-l="哩程">'+milesHtml+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")
+          +'</td><td class="nolab" data-l="">'+(bk?'<a class="book" target="_blank" rel="noopener" href="'+bk+'">開票 ↗</a>':"")+"</td></tr>";
       });
       html+='</tbody></table>';
     });
@@ -715,16 +803,19 @@
     // 2026-08-04 起結果不公開：要登入（且被授權）才拿得到，editor 由後端過濾成自己的航線
     if(!token()){
       $("results").innerHTML='<p class="msg">🔒 監控結果需要登入才能看，請先在上方登入。</p>';
-      $("trips").innerHTML=""; $("summary").innerHTML=""; $("res-sub").textContent="";
+      $("trips").innerHTML=""; $("summary").innerHTML=""; $("res-sub").textContent=""; $("health").innerHTML="";
       return;
     }
     api("GET","/api/seats/results",null,function(e,d){
       if(e){$("results").innerHTML='<p class="msg err">載入結果失敗：'+esc(e)+"</p>";return;}
       ALL=d.results||[];
       renderTrips(d.trips||[]);
+      renderHealth(d.health);
       $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
       var na=ALL.filter(function(r){return r.status==="available";}).length;
-      $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>';
+      var nNew=ALL.filter(function(r){return r.firstAvail&&(Date.now()-r.firstAvail)<86400000;}).length;
+      $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>'
+        +(nNew?'<div class="stat">24h 新出現 <b style="color:#f5a524">'+nNew+'</b></div>':"");
       var airs=[],cabins=[];
       ALL.forEach(function(r){ if(airs.indexOf(r.airline)<0)airs.push(r.airline);
         (r.cabin||"").split(/[\/、]/).forEach(function(c){c=c.trim();if(c&&cabins.indexOf(c)<0)cabins.push(c);}); });
@@ -756,8 +847,8 @@
   });
   ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
-  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshWatch();loadRegions();loadResults();}
-  function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");loadResults();}
+  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadRegions();loadResults();}
+  function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESS_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");loadResults();}
 
   window.addEventListener("load",function(){
     function initGsi(){
