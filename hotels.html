@@ -254,7 +254,9 @@
         +'<div class="stat '+(pOk?"ok":"na")+'">點數房(整段)<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 ¥'+cpp+"</span>":"")+"</div>"
         +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?yen(s.cash.total):"無")+"</b></div>"
         +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?yen(s.corp.total):"無")+"</b></div>":"")
-        +"</div>";
+        +(s.suite?'<div class="stat ok">套房(每晚)<b>'+(s.suite.perNight!=null?pts(s.suite.perNight):"—")+"</b>"+(s.suite.cashNight!=null?'<span style="font-size:0.74rem;color:var(--text2)">'+yen(s.suite.cashNight)+"/晚</span>":"")+"</div>":"")
+        +"</div>"
+        +(h.src?'<p class="msg" style="margin:0 0 4px">ℹ️ '+esc(h.src)+"</p>":"");
       if(nights.length){
         html+='<div class="ngrid"><table><thead><tr><th class="rowl"></th>';
         nights.forEach(function(n){var p=n.date.split("-");html+="<th>"+p[1]+"/"+p[2]+"</th>";});
