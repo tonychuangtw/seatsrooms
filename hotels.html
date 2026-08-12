@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🏨 飯店房況監控</title>
+<meta name="theme-color" content="#0d0d10">
+<style>
+  :root {
+    --bg:#0d0d10; --card:#17171c; --border:#2a2a33; --text:#ececf1; --text2:#9a9aa8;
+    --accent:#6aa8ff; --ok:#4cc38a; --okbg:#0f2a1e; --dim:#6b6b78; --chip:#22222b; --bad:#e5484d; --warn:#f5a524;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:0 12px 60px; background:var(--bg); color:var(--text);
+    font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; line-height:1.5;
+    max-width:820px; margin-inline:auto; }
+  h1 { font-size:1.35rem; margin:20px 0 2px; }
+  h2 { font-size:1.05rem; margin:0 0 8px; }
+  .sub { color:var(--text2); font-size:0.85rem; margin:0 0 14px; }
+  .nav { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 12px; }
+  .nav a { display:inline-block; padding:7px 13px; border:1px solid var(--border); border-radius:99px;
+    font-size:0.86rem; text-decoration:none; color:var(--accent); background:var(--chip); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin:14px 0; }
+  label { display:block; font-size:0.85rem; color:var(--text2); margin:10px 0 4px; }
+  input, select { width:100%; padding:10px; border-radius:9px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:0.95rem; }
+  input[type=date]{ color-scheme:dark; min-height:44px; -webkit-appearance:none; appearance:none; }
+  input:focus, select:focus{ outline:none; border-color:var(--accent); }
+  .row2{ display:flex; gap:10px; } .row2>div{ flex:1; }
+  button{ border:none; border-radius:9px; padding:11px 18px; font-size:0.95rem; cursor:pointer; font-weight:600; }
+  .primary{ background:var(--accent); color:#06131c; width:100%; margin-top:14px; } .primary:disabled{ opacity:.5; }
+  .del{ background:transparent; color:var(--bad); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
+  .pause{ background:transparent; color:var(--text2); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
+  .scan{ background:transparent; color:var(--accent); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
+  .btn-row{ display:flex; gap:6px; flex-shrink:0; }
+  .msg{ font-size:0.88rem; color:var(--text2); min-height:1.2em; margin-top:8px; } .msg.err{ color:var(--bad); }
+  .hidden{ display:none; }
+  .entry{ border-bottom:1px solid var(--border); padding:10px 0; } .entry:last-child{ border-bottom:none; }
+  .entry-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .entry-name{ font-weight:700; } .entry-meta{ color:var(--text2); font-size:0.84rem; margin-top:2px; }
+  .badge{ display:inline-block; padding:1px 8px; border-radius:99px; font-size:0.74rem; border:1px solid var(--border); color:var(--text2); }
+  .badge.available{ background:var(--ok); color:#06281a; border:none; font-weight:700; }
+  .badge.cash_only{ color:var(--warn); border-color:#5a441a; }
+  .badge.no_rooms{ color:var(--bad); border-color:var(--bad); }
+  .badge.paused{ color:var(--text2); } .badge.pending{ color:var(--accent); border-color:var(--accent); }
+  .hl{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; font-size:0.8rem; color:var(--text2); }
+  .hl span{ border:1px solid var(--border); border-radius:99px; padding:3px 10px; background:var(--card); }
+  .hl i{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  .hl .g{ background:var(--ok); } .hl .y{ background:var(--warn); } .hl .r{ background:var(--bad); }
+  .tl{ display:flex; gap:2px; margin-top:6px; align-items:center; }
+  .tl i{ width:11px; height:11px; border-radius:2px; background:#1e1e26; }
+  .tl .t-av{ background:var(--ok); } .tl .t-ca{ background:var(--warn); } .tl .t-no{ background:#2c2c36; }
+  .tl-l{ font-size:0.72rem; color:var(--dim); margin-right:4px; }
+  table{ width:100%; border-collapse:collapse; font-size:0.85rem; }
+  thead th{ text-align:left; color:var(--text2); font-weight:600; font-size:0.74rem; padding:5px 7px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody td{ padding:7px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .rt{ color:var(--ok); font-weight:700; }
+  .hotel{ border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0; background:var(--card); }
+  .hotel-hd{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
+  .hotel-name{ font-weight:700; font-size:1rem; }
+  .stayrow{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+  .stat{ background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:7px 13px; font-size:0.85rem; }
+  .stat b{ font-size:1.05rem; display:block; } .stat.ok b{ color:var(--ok); } .stat.na b{ color:var(--dim); }
+  .ngrid{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .ngrid table{ border-collapse:separate; border-spacing:2px; font-size:0.74rem; }
+  .ngrid th{ font-weight:400; color:var(--text2); font-size:0.68rem; padding:0 3px; text-align:center; border:none; }
+  .ngrid td{ border:1px solid var(--border); border-radius:6px; padding:4px 6px; text-align:center; white-space:nowrap; }
+  .ngrid td.on{ background:var(--okbg); border-color:#1e5a3e; color:var(--ok); font-weight:600; }
+  .ngrid td.off{ color:var(--dim); }
+  .ngrid th.rowl{ text-align:left; color:var(--text); font-size:0.74rem; }
+  .book{ color:var(--accent); text-decoration:none; font-size:0.84rem; }
+  .foot{ color:var(--dim); font-size:0.78rem; margin-top:22px; text-align:center; }
+</style>
+</head>
+<body>
+<h1>🏨 飯店房況監控</h1>
+<p class="sub">萬豪 / 凱悅獎勵房＋現金價監控 · 點數房出現、現金跌破門檻都推播</p>
+<div class="nav">
+  <a href="index.html">✈️ 機位主頁</a>
+  <a href="rules.html">📖 規則庫</a>
+</div>
+
+<div id="signin-card" class="card">
+  <p>用 Google 登入後管理監控（跟機位頁同一顆登入，登過就直接進）</p>
+  <div id="gsi-btn"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="card">
+    <h2>➕ 新增飯店監控</h2>
+    <div class="row2">
+      <div><label>連鎖</label><select id="h-chain">
+        <option value="marriott" selected>萬豪 Marriott</option>
+        <option value="hyatt">凱悅 Hyatt</option></select></div>
+      <div><label>飯店代碼(訂房網址裡那段)</label><input id="h-code" placeholder="例：CTSWI / CTSPH" maxlength="8" style="text-transform:uppercase"></div>
+    </div>
+    <label>飯店名稱</label>
+    <input id="h-name" placeholder="例：The Westin Rusutsu Resort" maxlength="60">
+    <div class="row2">
+      <div><label>入住</label><input id="h-in" type="date"></div>
+      <div><label>退房</label><input id="h-out" type="date"></div>
+    </div>
+    <div class="row2">
+      <div><label>人數</label><select id="h-adults"></select></div>
+      <div><label>房型</label><select id="h-rt">
+        <option value="standard" selected>標準房(點數用)</option>
+        <option value="suite">套房(升等確認用)</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>現金價門檻(日圓,整段,選填)</label><input id="h-cashmax" inputmode="numeric" placeholder="例：600000 = 跌破 ¥60萬通知"></div>
+      <div><label>協議價代號(選填,萬豪)</label><input id="h-corp" placeholder="例：APP" maxlength="10" style="text-transform:uppercase"></div>
+    </div>
+    <button id="h-submit" class="primary">加入監控</button>
+    <p id="h-msg" class="msg"></p>
+  </div>
+
+  <div class="card">
+    <h2>📋 飯店監控清單</h2>
+    <div id="hlist"><p class="msg">載入中…</p></div>
+  </div>
+</div>
+
+<h2 style="margin-top:26px;">🎯 房況結果 <button id="rescan" class="pause" style="vertical-align:middle;margin-left:8px;">⚡ 立即掃</button></h2>
+<p class="sub" id="r-sub">載入中…</p>
+<div class="hl" id="health"></div>
+<div id="results"><p class="msg">載入中…</p></div>
+<p class="foot">萬豪在 brain 直掃官網(登出價) · 凱悅掃描器 scout 開發中 · 頁面每 5 分自動刷新</p>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+(function () {
+  "use strict";
+  var CLIENT_ID="481860179039-gb37qsdogd4vgnn2g5umh73jen02avj4.apps.googleusercontent.com";
+  var API="https://claudebot500.tailfcf67f.ts.net", TOKEN_KEY="seatsrooms.token", SESS_KEY="seatsrooms.sess";
+  var CHAIN_LABEL={marriott:"萬豪",hyatt:"凱悅"};
+  var STATUS_LABEL={pending:"等待首掃",available:"🎉 點數房有",cash_only:"💰 只有現金房",no_rooms:"❌ 無房"};
+  function $(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function token(){try{return localStorage.getItem(SESS_KEY)||sessionStorage.getItem(TOKEN_KEY);}catch(e){return null;}}
+  function refreshSession(){ if(!token())return;
+    api("POST","/api/session",{},function(e,d){ if(e||!d||!d.token)return;
+      try{localStorage.setItem(SESS_KEY,d.token);sessionStorage.removeItem(TOKEN_KEY);}catch(x){} }); }
+  function fmtTime(ms){if(!ms)return "—";var d=new Date(ms);return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
+  function api(method,path,body,cb){
+    var x=new XMLHttpRequest(); x.open(method,API+path);
+    x.setRequestHeader("Authorization","Bearer "+token());
+    if(body)x.setRequestHeader("Content-Type","application/json"); x.timeout=20000;
+    x.onload=function(){var d=null;try{d=JSON.parse(x.responseText);}catch(e){}
+      if(x.status===401){signOut();return;}
+      cb(x.status>=200&&x.status<300?null:((d&&d.error)||("HTTP "+x.status)),d);};
+    x.onerror=function(){cb("連線失敗(500 主機可能離線)");}; x.ontimeout=function(){cb("連線逾時");};
+    x.send(body?JSON.stringify(body):null);
+  }
+
+  var ROLE=null, ME=null;
+  var TL_CLS={available:"t-av",cash_only:"t-ca",no_rooms:"t-no"};
+  function histTimeline(w){
+    var h=w.history||[]; if(!h.length)return "";
+    var out='<div class="tl"><span class="tl-l">14天</span>',now=new Date();
+    for(var i=13;i>=0;i--){
+      var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+      var dayEnd=d.getTime()+86399999,st=null;
+      for(var j=h.length-1;j>=0;j--){ if(h[j].t<=dayEnd){st=h[j].status;break;} }
+      var lbl=(d.getMonth()+1)+"/"+d.getDate();
+      out+='<i class="'+(st?(TL_CLS[st]||""):"")+'" title="'+lbl+" "+esc(st?(STATUS_LABEL[st]||st):"無紀錄")+'"></i>';
+    }
+    return out+"</div>";
+  }
+  function renderWatch(hs){
+    var el=$("hlist");
+    if(!hs||!hs.length){el.innerHTML='<p class="msg">還沒有飯店監控,用上面表單新增。</p>';return;}
+    el.innerHTML="";
+    hs.forEach(function(w){
+      var div=document.createElement("div"); div.className="entry";
+      var paused=w.active===false;
+      var st=paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—");
+      var badge=paused?"paused":esc(w.status||"");
+      var nights=Math.round((new Date(w.checkOut)-new Date(w.checkIn))/86400000);
+      div.innerHTML='<div class="entry-head"><div>'
+        +'<div class="entry-name">'+esc(w.hotelName)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
+        +'<div class="entry-meta">'+esc(CHAIN_LABEL[w.chain]||w.chain)+" · "+esc(w.checkIn)+" ～ "+esc(w.checkOut)
+        +"（"+nights+" 晚 "+(w.adults||2)+" 人）"
+        +(w.corpCode?" · 協議價 "+esc(w.corpCode):"")
+        +(w.cashMax?" · 現金門檻 ¥"+Number(w.cashMax).toLocaleString():"")
+        +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")+"</div>"
+        +histTimeline(w)+"</div>"
+        +'<div class="btn-row">'
+        +((ROLE==="owner"||(ROLE==="editor"&&ME&&w.createdBy===ME))
+          ?'<button class="pause">'+(paused?"▶ 恢復":"⏸ 暫停")+'</button><button class="del">刪除</button>':"")
+        +"</div></div>";
+      var pb=div.querySelector(".pause");
+      if(pb)pb.addEventListener("click",function(){
+        api("PATCH","/api/rooms/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch(d.hotels);});});
+      var db=div.querySelector(".del");
+      if(db)db.addEventListener("click",function(){
+        if(!confirm("停止監控 "+w.hotelName+"？"))return;
+        api("DELETE","/api/rooms/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){alert("刪除失敗："+e);return;}renderWatch(d.hotels);});});
+      el.appendChild(div);
+    });
+  }
+  function refreshWatch(){ api("GET","/api/rooms/watch",null,function(e,d){
+    if(e){$("hlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;}
+    ROLE=(d&&d.role)||"owner"; ME=(d&&d.me)||null;
+    renderWatch(d.hotels||[]); }); }
+
+  function submitForm(){
+    var m=$("h-msg"); m.className="msg";
+    var code=$("h-code").value.trim().toUpperCase(), name=$("h-name").value.trim();
+    if(!/^[A-Z0-9]{4,8}$/.test(code)){m.textContent="飯店代碼要 4-8 碼英數(訂房網址裡那段,如 CTSWI)";m.className="msg err";return;}
+    if(!name){m.textContent="請填飯店名稱";m.className="msg err";return;}
+    if(!$("h-in").value||!$("h-out").value||$("h-in").value>=$("h-out").value){m.textContent="入住要早於退房";m.className="msg err";return;}
+    var btn=$("h-submit"); btn.disabled=true; m.textContent="送出中…";
+    api("POST","/api/rooms/watch",{chain:$("h-chain").value,hotelCode:code,hotelName:name,
+      checkIn:$("h-in").value,checkOut:$("h-out").value,adults:parseInt($("h-adults").value,10),
+      roomType:$("h-rt").value,cashMax:$("h-cashmax").value.trim()||null,
+      corpCode:$("h-corp").value.trim()||null},function(e,d){
+      btn.disabled=false;
+      if(e){m.textContent="失敗："+e;m.className="msg err";return;}
+      m.textContent="✅ 已加入 "+name; renderWatch(d.hotels);
+    });
+  }
+
+  // ---- 結果 ----
+  var HL_NAME={marriott:"萬豪",hyatt:"凱悅"};
+  function fmtAge(ms){var h=Math.floor(ms/3600e3);if(h<1)return Math.max(1,Math.round(ms/60e3))+" 分前";if(h<48)return h+" 小時前";return Math.floor(h/24)+" 天前";}
+  function renderHealth(h){
+    var el=$("health"); if(!h){el.innerHTML="";return;}
+    var now=Date.now(),html="";
+    Object.keys(HL_NAME).forEach(function(p){
+      if(!h[p])return;
+      var last=h[p].last, age=last!=null?now-last:null;
+      var cls=age==null?"r":(age<14*3600e3?"g":(age<28*3600e3?"y":"r"));
+      html+='<span><i class="'+cls+'"></i>'+HL_NAME[p]+" "+(age!=null?fmtAge(age):"沒掃到")+"</span>";
+    });
+    el.innerHTML=html?'<span style="border:none;background:none;padding:3px 0">掃描健康：</span>'+html:"";
+  }
+  function yen(n){return n==null?"—":"¥"+Number(n).toLocaleString();}
+  function pts(n){return n==null?"—":Number(n).toLocaleString()+" 點";}
+  function renderResults(d){
+    var el=$("results"), hs=d.hotels||[];
+    if(!hs.length){el.innerHTML='<p class="msg">還沒有掃描結果,新增監控後按「⚡ 立即掃」。</p>';return;}
+    el.innerHTML="";
+    hs.forEach(function(h){
+      var box=document.createElement("div"); box.className="hotel";
+      var nights=(h.nights||[]);
+      var s=h.stay||{};
+      var pOk=s.points&&s.points.avail, cOk=s.cash&&s.cash.avail;
+      var cpp=(pOk&&cOk&&s.points.perStay)?(s.cash.total/s.points.perStay).toFixed(2):null;
+      var html='<div class="hotel-hd"><div><div class="hotel-name">'+esc(h.name)
+        +' <span class="badge">'+esc(CHAIN_LABEL[h.chain]||h.chain)+"</span></div>"
+        +'<div class="entry-meta">'+esc(h.checkIn)+" ～ "+esc(h.checkOut)+"（"+nights.length+" 晚 "+(h.adults||2)+" 人）</div></div>"
+        +(h.bookUrl?'<a class="book" target="_blank" rel="noopener" href="'+h.bookUrl+'">去官網訂 ↗</a>':"")+"</div>";
+      html+='<div class="stayrow">'
+        +'<div class="stat '+(pOk?"ok":"na")+'">點數房(整段)<b>'+(pOk?pts(s.points.perStay):"無")+"</b>"+(cpp?'<span style="font-size:0.74rem;color:var(--text2)">每點 ¥'+cpp+"</span>":"")+"</div>"
+        +'<div class="stat '+(cOk?"ok":"na")+'">現金(整段/房)<b>'+(cOk?yen(s.cash.total):"無")+"</b></div>"
+        +(s.corp?'<div class="stat '+(s.corp.avail?"ok":"na")+'">協議價 '+esc(h.corpCode||"")+"<b>"+(s.corp.avail?yen(s.corp.total):"無")+"</b></div>":"")
+        +"</div>";
+      if(nights.length){
+        html+='<div class="ngrid"><table><thead><tr><th class="rowl"></th>';
+        nights.forEach(function(n){var p=n.date.split("-");html+="<th>"+p[1]+"/"+p[2]+"</th>";});
+        html+='</tr></thead><tbody><tr><th class="rowl">點數</th>';
+        nights.forEach(function(n){html+='<td class="'+(n.points!=null?"on":"off")+'">'+(n.points!=null?(n.points/1000)+"k":"✕")+"</td>";});
+        html+='</tr><tr><th class="rowl">現金</th>';
+        nights.forEach(function(n){html+='<td class="'+(n.cash!=null?"on":"off")+'">'+(n.cash!=null?"¥"+Math.round(n.cash/1000)+"k":"✕")+"</td>";});
+        html+="</tr></tbody></table></div>";
+        html+='<p class="msg" style="margin-top:4px">逐晚格子：整段訂不到時看是哪幾晚卡住（✕=該晚無房）</p>';
+      }
+      box.innerHTML=html;
+      el.appendChild(box);
+    });
+  }
+  function loadResults(){
+    if(!token()){
+      $("results").innerHTML='<p class="msg">🔒 房況結果需要登入才能看,請先在上方登入。</p>';
+      $("r-sub").textContent=""; $("health").innerHTML=""; return;
+    }
+    api("GET","/api/rooms/results",null,function(e,d){
+      if(e){$("results").innerHTML='<p class="msg err">載入結果失敗：'+esc(e)+"</p>";return;}
+      renderHealth(d.health);
+      $("r-sub").textContent=d.updated?("最後更新 "+fmtTime(Date.parse(d.updated))):"還沒掃過";
+      renderResults(d);
+    });
+  }
+  setInterval(loadResults,5*60*1000);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)loadResults();});
+  $("rescan").addEventListener("click",function(){
+    var b=$("rescan"); b.disabled=true; b.textContent="⚡ 掃描中…";
+    api("POST","/api/rooms/scan",{},function(e){
+      if(e){$("r-sub").textContent="觸發失敗："+e; b.disabled=false; b.textContent="⚡ 立即掃"; return;}
+      $("r-sub").textContent="已觸發,一輪約 3-4 分鐘,完成後自動更新…";
+      setTimeout(loadResults,120000); setTimeout(loadResults,260000);
+      setTimeout(function(){b.disabled=false;b.textContent="⚡ 立即掃";},260000);
+    });
+  });
+
+  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadResults();}
+  function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESS_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
+
+  window.addEventListener("load",function(){
+    function initGsi(){
+      if(!window.google||!google.accounts){setTimeout(initGsi,200);return;}
+      google.accounts.id.initialize({client_id:CLIENT_ID,callback:function(resp){try{sessionStorage.setItem(TOKEN_KEY,resp.credential);}catch(e){}showApp();}});
+      google.accounts.id.renderButton($("gsi-btn"),{theme:"filled_black",size:"large",text:"signin_with"});
+    }
+    (function(){ var s=$("h-adults");
+      for(var i=1;i<=8;i++){ var o=document.createElement("option"); o.value=i; o.textContent=i+" 人"; if(i===2)o.selected=true; s.appendChild(o); } })();
+    $("h-submit").addEventListener("click",submitForm);
+    initGsi(); if(token())showApp(); else loadResults();
+  });
+})();
+</script>
+</body>
+</html>
