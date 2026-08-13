@@ -105,7 +105,7 @@
     <label style="display:inline-flex;gap:6px;align-items:center;color:var(--text);margin-top:8px"><input type="checkbox" id="xh-others" style="width:auto"> 含非兩集團的酒店（Google Hotels，只有現金價）</label>
     <button id="xh-go" class="primary">🔎 開始探索</button>
     <p id="xh-msg" class="msg"></p>
-    <div id="xh-out"></div>
+    <div id="xh-result"></div>
   </div>
 
   <div class="card">
@@ -350,7 +350,7 @@
     if(!city){m.textContent="請填城市";m.className="msg err";return;}
     if(!$("xh-in").value||!$("xh-out").value||$("xh-in").value>=$("xh-out").value){m.textContent="入住要早於退房";m.className="msg err";return;}
     var btn=$("xh-go"); btn.disabled=true; m.textContent="已觸發，掃描中…（萬豪＋凱悅"+($("xh-others").checked?"＋Google":"")+"，約 1-3 分鐘）";
-    $("xh-out").innerHTML="";
+    $("xh-result").innerHTML="";
     api("POST","/api/rooms/explore",{city:city,checkIn:$("xh-in").value,checkOut:$("xh-out").value,
       adults:parseInt($("xh-adults").value,10),others:$("xh-others").checked},function(e){
       if(e){m.textContent="失敗："+e;m.className="msg err";btn.disabled=false;return;}
@@ -371,7 +371,7 @@
     });
   }
   function renderExplore(d){
-    var rows=d.rows||[], el=$("xh-out");
+    var rows=d.rows||[], el=$("xh-result");
     if(!rows.length){el.innerHTML='<p class="msg">這個城市這期間兩集團都查不到（或名稱拼法不對，換英文試試）。</p>';return;}
     var CH={marriott:"萬豪",hyatt:"凱悅",other:"其他"};
     var html='<table><thead><tr><th>飯店</th><th>集團</th><th>點數/整段</th><th>現金/晚</th><th>每點價值</th><th></th></tr></thead><tbody>';
@@ -396,7 +396,8 @@
     });
   }
 
-  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadResults();}
+  function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadResults();
+    api("GET","/api/rooms/explore",null,function(e,d){if(!e&&d&&d.status==="done")renderExplore(d);});}
   function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESS_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
 
   window.addEventListener("load",function(){
