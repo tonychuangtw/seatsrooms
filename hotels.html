@@ -370,11 +370,21 @@
       },12000);
     });
   }
+  // 探索結果只留最新一輪（後端單檔覆蓋），重整後表單是空的 → 一定要有標題說明這張表是查什麼的
+  function exploreHead(d){
+    var p=d.params||{};
+    if(!p.city)return "";
+    var t="";
+    if(d.updated){var dt=new Date(d.updated);
+      if(!isNaN(dt))t=" · 探索於 "+(dt.getMonth()+1)+"/"+dt.getDate()+" "+String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0");}
+    return '<p style="margin:0 0 8px;font-weight:600">🔎 '+esc(p.city)+'　'+esc(p.checkIn||"")+" ~ "+esc(p.checkOut||"")
+      +'<span style="font-weight:400;color:var(--dim)">（'+(d.nights||"?")+" 晚 · "+(p.adults||2)+" 人）"+esc(t)+"</span></p>";
+  }
   function renderExplore(d){
     var rows=d.rows||[], el=$("xh-result");
-    if(!rows.length){el.innerHTML='<p class="msg">這個城市這期間兩集團都查不到（或名稱拼法不對，換英文試試）。</p>';return;}
+    if(!rows.length){el.innerHTML=exploreHead(d)+'<p class="msg">這個城市這期間兩集團都查不到（或名稱拼法不對，換英文試試）。</p>';return;}
     var CH={marriott:"萬豪",hyatt:"凱悅",other:"其他"};
-    var html='<table><thead><tr><th>飯店</th><th>集團</th><th>點數/整段</th><th>現金/晚</th><th>每點價值</th><th></th></tr></thead><tbody>';
+    var html=exploreHead(d)+'<table><thead><tr><th>飯店</th><th>集團</th><th>點數/整段</th><th>現金/晚</th><th>每點價值</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r,i){
       var vc=valClass(r.chain,r.cpp), tag=valTag(r.chain,r.cpp);
       html+='<tr'+(vc==="glow"?' style="background:var(--okbg)"':'')+'><td class="main" data-l="飯店">'+esc(r.name)+' <span class="flt" style="color:var(--dim);font-size:0.72rem">'+esc(r.src||"")+"</span></td>"
@@ -397,7 +407,15 @@
   }
 
   function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadResults();
-    api("GET","/api/rooms/explore",null,function(e,d){if(!e&&d&&d.status==="done")renderExplore(d);});}
+    api("GET","/api/rooms/explore",null,function(e,d){
+      if(e||!d||d.status!=="done")return;
+      renderExplore(d);
+      // 表單也帶回上輪條件：否則欄位空白、使用者看不出結果表對應哪次查詢，也不好微調重查
+      var p=d.params||{};
+      if(p.city&&!$("xh-city").value){$("xh-city").value=p.city;
+        if(p.checkIn)$("xh-in").value=p.checkIn; if(p.checkOut)$("xh-out").value=p.checkOut;
+        if(p.adults)$("xh-adults").value=p.adults; if(p.others)$("xh-others").checked=true;}
+    });}
   function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESS_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");}
 
   window.addEventListener("load",function(){
