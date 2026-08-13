@@ -194,10 +194,20 @@
       <div><label>目的地(IATA,可逗號多個)</label><input id="f-dest" placeholder="例：NRT 或 NRT,HND" maxlength="30" style="text-transform:uppercase"></div>
     </div>
     <p class="msg" style="margin:2px 0 6px;">出發地/目的地各最多 5 個,逗號分隔(TPE,KHH → NRT,HND)。官網來源會把所有組合逐一掃描;星宇官網一次只能查一組航線+單一出發日,多填的會在清單上標註。</p>
+    <label>行程</label>
+    <div style="display:flex;gap:14px;padding:2px 0 6px;">
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="radio" name="f-trip" class="tt" value="oneway" checked style="width:auto"> 單程</label>
+      <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="radio" name="f-trip" class="tt" value="roundtrip" style="width:auto"> 來回</label>
+    </div>
     <div class="row2">
-      <div><label>日期(起)</label><input id="f-date-from" type="date"></div>
+      <div><label id="f-lab-from">日期(起)</label><input id="f-date-from" type="date"></div>
       <div><label>日期(迄,留空=單日)</label><input id="f-date-to" type="date"></div>
     </div>
+    <div class="row2" id="f-ret-row" style="display:none">
+      <div><label>回程(起)</label><input id="f-ret-from" type="date"></div>
+      <div><label>回程(迄,留空=單日)</label><input id="f-ret-to" type="date"></div>
+    </div>
+    <p class="msg" id="f-ret-hint" style="display:none;margin:2px 0 6px;">去程與回程各自一個日期範圍(例:1/21-1/23 出發、2/2-2/3 回程)。兩段分開掃、分開通知——單程獎勵票各算一半哩程,哪段先開出來就可以先訂。</p>
     <label>艙等(可複選,不選=皆可)</label>
     <div id="f-cabins" style="display:flex;gap:14px;flex-wrap:wrap;padding:4px 0 2px;">
       <label style="margin:0;display:inline-flex;gap:5px;align-items:center;color:var(--text)"><input type="checkbox" class="cab" value="economy" style="width:auto"> 經濟</label>
@@ -408,7 +418,10 @@
       var paused=w.active===false;
       var st=paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—");
       var badge=paused?"paused":esc(w.status||"");
-      var dt=w.dateTo&&w.dateTo!==w.dateFrom?w.dateFrom+" ～ "+w.dateTo:w.dateFrom;
+      // 來回需求：去/回各一個日期範圍,兩段都要看得到（只顯示去程等於騙自己）
+      var rt=w.tripType==="roundtrip"&&w.retFrom;
+      var span=function(a,b){return b&&b!==a?a+" ～ "+b:a;};
+      var dt=rt?("去 "+span(w.dateFrom,w.dateTo)+"　回 "+span(w.retFrom,w.retTo)):span(w.dateFrom,w.dateTo);
       var srcCls=w.source==="seatsaero"?"src-sa":"src-air";
       var cabTxt=(w.cabins&&w.cabins.length)?w.cabins.map(function(c){return CABIN_LABEL[c]||c;}).join("/"):(w.cabin?(CABIN_LABEL[w.cabin]||w.cabin):"皆可");
       var mn=w.seatsMin!=null?w.seatsMin:w.seats, mx=w.seatsMax!=null?w.seatsMax:w.seats;
@@ -417,7 +430,9 @@
       var avHtml=av.length?('<div class="avlist">可訂：<br>'+av.slice(0,MAXAV).join("<br>")
         +(av.length>MAXAV?"<br>… 還有 "+(av.length-MAXAV)+" 筆(見下方結果表)":"")+"</div>"):"";
       div.innerHTML='<div class="entry-head"><div>'
-        +'<div class="entry-name">'+esc(w.origin)+" → "+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span></div>"
+        +'<div class="entry-name">'+esc(w.origin)+(rt?" ⇄ ":" → ")+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span>"
+        +(rt&&w.legStatus?' <span style="font-size:0.75rem;color:var(--text2)">去程 '+esc(STATUS_LABEL[w.legStatus.out]||w.legStatus.out||"—")
+          +' · 回程 '+esc(STATUS_LABEL[w.legStatus.ret]||w.legStatus.ret||"—")+"</span>":"")+"</div>"
         +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+esc(seatTxt)+" · "+esc(PROGRAM_LABEL[w.program]||w.program)
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
         +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")
@@ -723,16 +738,24 @@
     var dFrom=$("f-date-from").value, dTo=$("f-date-to").value;
     if(!dFrom){m.textContent="請選日期";m.className="msg err";return;}
     if(dTo&&dFrom>dTo){m.textContent="起始日不能晚於結束日";m.className="msg err";return;}
+    var tt=(document.querySelector(".tt:checked")||{}).value||"oneway";
+    var rFrom=$("f-ret-from").value, rTo=$("f-ret-to").value;
+    if(tt==="roundtrip"){
+      if(!rFrom){m.textContent="來回需求請選回程日期";m.className="msg err";return;}
+      if(rTo&&rFrom>rTo){m.textContent="回程起日不能晚於回程迄日";m.className="msg err";return;}
+      if(rFrom<dFrom){m.textContent="回程日期不能早於去程出發日";m.className="msg err";return;}
+    }
     var sMin=parseInt($("f-seats-min").value,10), sMax=parseInt($("f-seats-max").value,10);
     if(!sMin||!sMax||sMin<1||sMax>9||sMin>sMax){m.textContent="人數範圍要 1–9,且起 ≤ 迄";m.className="msg err";return;}
     var cabins=[].slice.call(document.querySelectorAll(".cab:checked")).map(function(c){return c.value;});
     var btn=$("f-submit"); btn.disabled=true; m.textContent="送出中…"; m.className="msg";
     api("POST","/api/seats/watch",{origin:origin,dest:dest,dateFrom:dFrom,dateTo:dTo||null,
+      tripType:tt,retFrom:tt==="roundtrip"?rFrom:null,retTo:tt==="roundtrip"?(rTo||null):null,
       cabins:cabins,seatsMin:sMin,seatsMax:sMax,program:$("f-program").value,
       source:$("f-source").value,scanPerDay:parseInt($("f-scan").value,10)},function(e,d){
       btn.disabled=false;
       if(e){m.textContent="失敗："+e;m.className="msg err";return;}
-      m.textContent="✅ 已加入 "+origin+"→"+dest; m.className="msg"; renderWatch(d.watches);
+      m.textContent="✅ 已加入 "+origin+(tt==="roundtrip"?"⇄":"→")+dest; m.className="msg"; renderWatch(d.watches);
     });
   }
 
@@ -790,7 +813,9 @@
         var milesHtml=esc(r.miles||"");
         if(r.cashTwd)milesHtml+='<div class="cpm'+(r.cpm&&r.cpm>=0.8?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
         var bk=(r.status==="available"||r.status==="waitlist")?bookUrl(r):null;
-        html+='<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)+'</td><td data-l="日期">'+esc(r.date||"")
+        html+='<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)
+          +(r.leg?' <span class="badge" style="background:var(--chip);color:var(--text2)">'+esc(r.leg)+"</span>":"")
+          +'</td><td data-l="日期">'+esc(r.date||"")
           +'</td><td data-l="艙等">'+esc(r.cabin||"")+'</td><td data-l="狀態">'+sb+'</td><td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")
           +'</td><td data-l="哩程">'+milesHtml+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")
           +'</td><td class="nolab" data-l="">'+(bk?'<a class="book" target="_blank" rel="noopener" href="'+bk+'">開票 ↗</a>':"")+"</td></tr>";
@@ -875,6 +900,15 @@
     $("x-submit").addEventListener("click",explore);
     initGsi(); if(token())showApp();
     $("f-submit").addEventListener("click",submitForm);
+    // 單程/來回切換：回程欄位只在來回時出現,標籤也跟著改（單程叫「日期」、來回叫「去程」）
+    [].slice.call(document.querySelectorAll(".tt")).forEach(function(r){
+      r.addEventListener("change",function(){
+        var rt=r.value==="roundtrip"&&r.checked;
+        $("f-ret-row").style.display=rt?"":"none";
+        $("f-ret-hint").style.display=rt?"":"none";
+        $("f-lab-from").textContent=rt?"去程(起)":"日期(起)";
+      });
+    });
     // 亞萬還沒有官網掃描：選了自動切 seats.aero（Alaska 代理視角），後端也會強制
     $("f-program").addEventListener("change",function(){
       if(this.value==="asiamiles"){$("f-source").value="seatsaero";
