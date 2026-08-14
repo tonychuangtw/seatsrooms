@@ -38,6 +38,10 @@
   .grp{ margin:16px 0 5px; font-weight:700; display:flex; align-items:center; gap:8px; }
   .grp .prog{ font-size:0.76rem; color:var(--text2); font-weight:400; }
   tr.avail{ background:var(--okbg); } tr.none td{ color:var(--dim); }
+  /* 每哩價值划算的列：琥珀色亮顯,比一般「有位」的綠更搶眼(現金/哩程 ≥0.8 划算、≥1.2 超值) */
+  tr.val{ background:#2a2112; box-shadow:inset 3px 0 0 #f5a524; }
+  tr.val2{ background:#332507; box-shadow:inset 3px 0 0 #ffc94d; }
+  .valbadge{ background:#f5a524; color:#241a05; border:none; font-weight:700; }
   .flt{ color:var(--text2); font-size:0.79rem; }
   .editbox{ border:1px dashed var(--border); border-radius:10px; padding:10px 12px; margin-top:8px; width:100%; }
   .ev{ font-size:0.82rem; color:var(--text2); padding:3px 0; border-bottom:1px dashed var(--border); }
@@ -950,10 +954,14 @@
   }
   function rowHtml(r,withAir){
     var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
+    // 划算票整列亮顯:每哩價值(現金最低價÷哩程)≥1.2 超值、≥0.8 划算
+    var vtier=(r.status==="available"&&r.cpm)?(r.cpm>=1.2?2:(r.cpm>=0.8?1:0)):0;
+    if(vtier)cls+=vtier===2?" val2":" val";
     var sb=r.status==="available"?(r.partial?'<span class="badge partial" title="位數不足需求人數,可分批訂">有位·分批</span>':'<span class="badge available">有位</span>'):(r.status==="waitlist"?'<span class="badge pending" title="只有候補位">⏳候補</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending" title="官網查得到航班,可訂數待確認">待確認</span>')));
     // 🆕 = 24 小時內剛從無位轉有位的列（aggregate 記 firstAvail）
     if(r.firstAvail&&(Date.now()-r.firstAvail)<86400000)sb='<span class="badge new">🆕</span> '+sb;
     var milesHtml=esc(r.miles||"");
+    if(vtier)milesHtml+=' <span class="badge valbadge">'+(vtier===2?"🔥 超值":"✨ 划算")+"</span>";
     if(r.cashTwd)milesHtml+='<div class="cpm'+(r.cpm&&r.cpm>=0.8?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
     // 餘額比對：有填該計畫餘額且哩程數字可解析時,標夠不夠開(以每人所需哩程計)
     if(r.status==="available"&&BAL[r.program]&&BAL[r.program].miles!=null){
@@ -1041,7 +1049,9 @@
       $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
       var na=ALL.filter(function(r){return r.status==="available";}).length;
       var newRows=ALL.filter(function(r){return r.firstAvail&&(Date.now()-r.firstAvail)<86400000;});
+      var nVal=ALL.filter(function(r){return r.status==="available"&&r.cpm>=0.8;}).length;
       $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>'
+        +(nVal?'<div class="stat">✨ 划算 <b style="color:#f5a524">'+nVal+'</b></div>':"")
         +(newRows.length?'<div class="stat">24h 新出現 <b style="color:#f5a524">'+newRows.length+'</b></div>':"")
         +balExpiryWarnings().map(function(s){return '<div class="stat">⚠️ <b style="color:#f5a524;font-size:0.85rem">'+esc(s)+"</b></div>";}).join("");
       // 儀表板重點：24h 內剛開出來的位子獨立列一張,先搶先贏
