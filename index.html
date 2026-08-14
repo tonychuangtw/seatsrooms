@@ -32,9 +32,10 @@
   body:not(.authed) .need-auth{ display:none !important; }
   body.authed .need-anon{ display:none !important; }
   .controls{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; align-items:center; }
-  .controls label{ font-size:0.82rem; margin:0; display:flex; align-items:center; gap:5px; }
+  /* white-space:nowrap:手機上 label 被擠窄時整顆換行,不要「只看有位」一字一行直排 */
+  .controls label{ font-size:0.82rem; margin:0; display:flex; align-items:center; gap:5px; white-space:nowrap; }
   .controls select{ width:auto; padding:6px 9px; font-size:0.85rem; }
-  .controls input[type=date]{ width:auto; min-height:34px; padding:5px 7px; font-size:0.8rem; }
+  .controls input[type=date]{ width:auto; min-width:118px; min-height:34px; padding:5px 7px; font-size:0.8rem; }
   .grp{ margin:16px 0 5px; font-weight:700; display:flex; align-items:center; gap:8px; }
   .grp .prog{ font-size:0.76rem; color:var(--text2); font-weight:400; }
   tr.avail{ background:var(--okbg); } tr.none td{ color:var(--dim); }
@@ -46,6 +47,7 @@
   .editbox{ border:1px dashed var(--border); border-radius:10px; padding:10px 12px; margin-top:8px; width:100%; }
   .ev{ font-size:0.82rem; color:var(--text2); padding:3px 0; border-bottom:1px dashed var(--border); }
   .ev:last-child{ border-bottom:none; }
+  .ev.drop{ color:#f5a524; background:#2a2112; border-radius:6px; padding:4px 8px; border-bottom:none; margin:2px 0; }
   /* ---- 行程專案 / 日曆熱圖 ---- */
   .leg{ border:1px solid var(--border); border-radius:10px; padding:9px 10px; margin:8px 0; background:var(--bg); }
   .leg-hd{ display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--text2); margin-bottom:4px; }
@@ -952,22 +954,37 @@
     var base=healthHtml(LAST_H,HL_NAME,14,28), sa=saChip();
     el.innerHTML=base?base+sa:(sa?'<span style="border:none;background:none;padding:3px 0">掃描健康：</span>'+sa:"");
   }
+  // 結果列的 program 欄是顯示名("Mileage Club"),要對回 ana/eva… key 得從 airline 名反查
+  function progKeyOf(r){
+    var a=r.airline||"";
+    for(var k in AIR_KEY){ if(a.indexOf(AIR_KEY[k])>=0)return k; }
+    return null;
+  }
+  // 每家哩程價值行情不同,划算門檻按計畫分(NT$/哩):Alaska 哩最值錢門檻最高、星宇最低
+  // {good:✨划算, great:🔥超值}——要調整跟我說一聲就改
+  var VAL_TH_AIR={ana:{good:0.7,great:1.1},eva:{good:0.6,great:0.95},cal:{good:0.55,great:0.9},
+    starlux:{good:0.5,great:0.8},alaska:{good:0.8,great:1.3},asiamiles:{good:0.6,great:0.95}};
+  function valTier(r){
+    if(r.status!=="available"||!r.cpm)return 0;
+    var th=VAL_TH_AIR[progKeyOf(r)]||{good:0.8,great:1.2};
+    return r.cpm>=th.great?2:(r.cpm>=th.good?1:0);
+  }
   function rowHtml(r,withAir){
     var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
-    // 划算票整列亮顯:每哩價值(現金最低價÷哩程)≥1.2 超值、≥0.8 划算
-    var vtier=(r.status==="available"&&r.cpm)?(r.cpm>=1.2?2:(r.cpm>=0.8?1:0)):0;
+    var vtier=valTier(r);
     if(vtier)cls+=vtier===2?" val2":" val";
     var sb=r.status==="available"?(r.partial?'<span class="badge partial" title="位數不足需求人數,可分批訂">有位·分批</span>':'<span class="badge available">有位</span>'):(r.status==="waitlist"?'<span class="badge pending" title="只有候補位">⏳候補</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending" title="官網查得到航班,可訂數待確認">待確認</span>')));
     // 🆕 = 24 小時內剛從無位轉有位的列（aggregate 記 firstAvail）
     if(r.firstAvail&&(Date.now()-r.firstAvail)<86400000)sb='<span class="badge new">🆕</span> '+sb;
     var milesHtml=esc(r.miles||"");
     if(vtier)milesHtml+=' <span class="badge valbadge">'+(vtier===2?"🔥 超值":"✨ 划算")+"</span>";
-    if(r.cashTwd)milesHtml+='<div class="cpm'+(r.cpm&&r.cpm>=0.8?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
+    if(r.cashTwd)milesHtml+='<div class="cpm'+(vtier?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
     // 餘額比對：有填該計畫餘額且哩程數字可解析時,標夠不夠開(以每人所需哩程計)
-    if(r.status==="available"&&BAL[r.program]&&BAL[r.program].miles!=null){
+    var bpk=progKeyOf(r);
+    if(r.status==="available"&&bpk&&BAL[bpk]&&BAL[bpk].miles!=null){
       var need=parseMiles(r.miles);
-      if(need)milesHtml+='<div class="cpm'+(BAL[r.program].miles>=need?" good":"")+'">'
-        +(BAL[r.program].miles>=need?"✅ 餘額夠開":"缺 "+(need-BAL[r.program].miles).toLocaleString()+" 哩")+"</div>";
+      if(need)milesHtml+='<div class="cpm'+(BAL[bpk].miles>=need?" good":"")+'">'
+        +(BAL[bpk].miles>=need?"✅ 餘額夠開":"缺 "+(need-BAL[bpk].miles).toLocaleString()+" 哩")+"</div>";
     }
     var bk=(r.status==="available"||r.status==="waitlist")?bookUrl(r):null;
     return '<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)
@@ -1024,7 +1041,12 @@
         var ic=ev.status==="available"?"🟢":(ev.status==="no_seats"||ev.status==="no_rooms"?"🔴":(ev.status==="cash_only"?"💰":"🟡"));
         var what=ev.kind==="rooms"?((ev.chain==="marriott"?"萬豪 ":"凱悅 ")+ev.label):((PROGRAM_LABEL[ev.program]||"")+" "+ev.label);
         var st=ev.kind==="rooms"?(RSTATUS[ev.status]||ev.status):(STATUS_LABEL[ev.status]||ev.status);
-        html+='<div class="ev">'+fmtTime(ev.t)+"　"+ic+" "+esc(what)+" → "+esc(st)+(ev.n?"（"+ev.n+" 筆）":"")+"</div>";
+        // 降價/降點數亮顯:比上一次掃描便宜就標跌幅,整行換亮眼色
+        var drops=[];
+        if(ev.prevPoints&&ev.points!=null)drops.push("點數↓"+Math.round((1-ev.points/ev.prevPoints)*100)+"%（"+Number(ev.prevPoints).toLocaleString()+"→"+Number(ev.points).toLocaleString()+"）");
+        if(ev.prevCash&&ev.cash!=null)drops.push("現金↓"+Math.round((1-ev.cash/ev.prevCash)*100)+"%（"+Number(ev.prevCash).toLocaleString()+"→"+Number(ev.cash).toLocaleString()+"）");
+        html+='<div class="ev'+(drops.length?" drop":"")+'">'+fmtTime(ev.t)+"　"+(drops.length?"📉":ic)+" "+esc(what)+" → "+esc(st)
+          +(ev.n?"（"+ev.n+" 筆）":"")+(drops.length?" <b>"+esc(drops.join(" · "))+"</b>":"")+"</div>";
       });
       if(evs.length>20)html+='<p class="msg">… 還有 '+(evs.length-20)+' 筆(只保留 30 天)</p>';
       el.innerHTML=html;
@@ -1049,7 +1071,7 @@
       $("res-sub").textContent="最後更新 "+fmtTime(Date.parse(d.updated))+" · 共 "+ALL.length+" 筆";
       var na=ALL.filter(function(r){return r.status==="available";}).length;
       var newRows=ALL.filter(function(r){return r.firstAvail&&(Date.now()-r.firstAvail)<86400000;});
-      var nVal=ALL.filter(function(r){return r.status==="available"&&r.cpm>=0.8;}).length;
+      var nVal=ALL.filter(function(r){return valTier(r)>0;}).length;
       $("summary").innerHTML='<div class="stat">監控 <b>'+ALL.length+'</b></div><div class="stat ok">有位 <b>'+na+'</b></div>'
         +(nVal?'<div class="stat">✨ 划算 <b style="color:#f5a524">'+nVal+'</b></div>':"")
         +(newRows.length?'<div class="stat">24h 新出現 <b style="color:#f5a524">'+newRows.length+'</b></div>':"")
