@@ -267,7 +267,6 @@
 <div class="hl" id="health"></div>
 <div class="summary" id="summary"></div>
 <div id="dash-new"></div>
-<div id="events"></div>
 <div class="controls">
   <label>航空 <select id="rf-air"><option value="">全部</option></select></label>
   <label>艙等 <select id="rf-cabin"><option value="">全部</option></select></label>
@@ -276,6 +275,7 @@
   <label><input type="checkbox" id="rf-availonly"> 只看有位</label>
 </div>
 <div id="results"><p class="msg">載入中…</p></div>
+<div id="events"></div>
 
 <h2 style="margin-top:26px;">🌍 行程可行性</h2>
 <p class="sub">各段有位日期上下對齊,綠色 = 有位;下方是能把全段串起來的日期組合</p>
@@ -285,7 +285,7 @@
 <p class="foot">官網監控在 1800(camoufox 仿真人)定時掃描 · 結果每 30 分自動彙整更新 · 頁面每 5 分自動刷新</p>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="assets/shared.js?v=20260814"></script>
+<script src="assets/shared.js?v=20260814b"></script>
 <script>
 (function () {
   "use strict";
@@ -1030,14 +1030,21 @@
   }
   // 📜 最近事件：後端把 seats/rooms watch 的 history 變化點攤平成時間序(30天)
   var RSTATUS={available:"點數房有",cash_only:"只有現金房",no_rooms:"無房",pending:"等待首掃"};
+  var EV_ALL=false;
   function loadEvents(){
     var el=$("events"); if(!el)return;
     if(!token()){el.innerHTML="";return;}
     api("GET","/api/seats/events",null,function(e,d){
       if(e||!d||!d.events||!d.events.length){el.innerHTML="";return;}
-      var evs=d.events;
+      renderEvents(d.events);
+    });
+  }
+  function renderEvents(evs){
+      var el=$("events");
+      // 預設只列 8 筆:事件多起來會把結果表推到看不見,要看全部再點展開
+      var LIM=EV_ALL?evs.length:8;
       var html='<div class="grp">📜 最近事件 <span class="prog">30 天內狀態變化(含飯店)</span></div>';
-      evs.slice(0,20).forEach(function(ev){
+      evs.slice(0,LIM).forEach(function(ev){
         var ic=ev.status==="available"?"🟢":(ev.status==="no_seats"||ev.status==="no_rooms"?"🔴":(ev.status==="cash_only"?"💰":"🟡"));
         var what=ev.kind==="rooms"?((ev.chain==="marriott"?"萬豪 ":"凱悅 ")+ev.label):((PROGRAM_LABEL[ev.program]||"")+" "+ev.label);
         var st=ev.kind==="rooms"?(RSTATUS[ev.status]||ev.status):(STATUS_LABEL[ev.status]||ev.status);
@@ -1048,9 +1055,11 @@
         html+='<div class="ev'+(drops.length?" drop":"")+'">'+fmtTime(ev.t)+"　"+(drops.length?"📉":ic)+" "+esc(what)+" → "+esc(st)
           +(ev.n?"（"+ev.n+" 筆）":"")+(drops.length?" <b>"+esc(drops.join(" · "))+"</b>":"")+"</div>";
       });
-      if(evs.length>20)html+='<p class="msg">… 還有 '+(evs.length-20)+' 筆(只保留 30 天)</p>';
+      if(evs.length>LIM)html+='<button class="pause ev-more" style="margin-top:6px">▼ 顯示全部 '+evs.length+' 筆</button>';
+      else if(EV_ALL&&evs.length>8)html+='<button class="pause ev-more" style="margin-top:6px">▲ 收合</button>';
       el.innerHTML=html;
-    });
+      var mb=el.querySelector(".ev-more");
+      if(mb)mb.addEventListener("click",function(){ EV_ALL=!EV_ALL; renderEvents(evs); });
   }
   function loadResults(){
     loadEvents();

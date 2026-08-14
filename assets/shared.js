@@ -77,3 +77,19 @@ function fillNum(sel,from,to,def,suffix){
   for(var i=from;i<=to;i++){ var o=document.createElement("option");
     o.value=i; o.textContent=i+(suffix||""); if(i===def)o.selected=true; sel.appendChild(o); }
 }
+// PWA 加到主畫面後是全螢幕,沒有瀏覽器的重新整理鈕(2026-08-14 Tony 反映):
+// 1) 頁尾補一顆「↻ 重新載入頁面」 2) 切回 app 且頁面已載入超過 6 小時就自動整頁重載拿新版
+var PAGE_LOADED_AT=Date.now();
+document.addEventListener("visibilitychange",function(){
+  if(!document.hidden&&Date.now()-PAGE_LOADED_AT>6*3600e3)location.reload();
+});
+document.addEventListener("DOMContentLoaded",function(){
+  var f=document.querySelector(".foot");
+  if(!f)return;
+  var a=document.createElement("a");
+  a.href="#"; a.textContent="↻ 重新載入頁面";
+  a.style.cssText="color:var(--accent);text-decoration:none;margin-left:6px";
+  a.addEventListener("click",function(ev){ev.preventDefault();location.reload();});
+  f.appendChild(document.createTextNode(" · "));
+  f.appendChild(a);
+});
