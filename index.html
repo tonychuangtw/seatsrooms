@@ -204,6 +204,12 @@
         <option value="1">1 次</option><option value="2" selected>2 次</option>
         <option value="3">3 次</option><option value="4">4 次</option></select></div>
     </div>
+    <label>通知條件(選填,超過的不算有位)</label>
+    <div class="row2">
+      <div><input id="f-milesmax" type="number" min="1" placeholder="哩程上限 例:60000"></div>
+      <div><input id="f-taxmax" type="number" min="1" placeholder="稅費上限(同幣別數字)"></div>
+    </div>
+    <label style="margin:6px 0 0;display:inline-flex;gap:6px;align-items:center;color:var(--text)"><input type="checkbox" id="f-direct" style="width:auto"> ✈️ 只要直飛才通知<span style="color:var(--text2);font-size:0.78rem">(限 seats.aero 來源,官網掃描無航段資訊)</span></label>
     <button id="f-submit" class="primary">送出</button>
     <p id="f-msg" class="msg"></p>
   </div>
@@ -435,6 +441,9 @@
           +' · 回程 '+esc(STATUS_LABEL[w.legStatus.ret]||w.legStatus.ret||"—")+"</span>":"")+"</div>"
         +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+esc(seatTxt)+" · "+esc(PROGRAM_LABEL[w.program]||w.program)
         +' · <span class="'+srcCls+'">'+esc(SOURCE_LABEL[w.source]||"官網")+"</span> · 每日"+(w.scanPerDay||2)+"掃"
+        +(w.notifyFilter?(" · 🔔"+[w.notifyFilter.directOnly?"只直飛":null,
+          w.notifyFilter.milesMax?"≤"+Number(w.notifyFilter.milesMax).toLocaleString()+"哩":null,
+          w.notifyFilter.taxMax?"稅≤"+Number(w.notifyFilter.taxMax).toLocaleString():null].filter(Boolean).join("/")):"")
         +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")
         +(w.notifyEmail?"<br>👤 "+esc(w.createdBy||w.notifyEmail)+" 建立 · 📧 有位通知寄 email":"")+"</div>"
         +avHtml+histTimeline(w)+availStats(w)+"</div>"
@@ -485,7 +494,7 @@
     var old=div.querySelector(".editbox");
     if(old){old.remove();return;}
     var rt=w.tripType==="roundtrip";
-    var CABS=["economy","premium","business","first"], wc=w.cabins||[];
+    var CABS=["economy","premium","business","first"], wc=w.cabins||[], nf=w.notifyFilter||{};
     var box=document.createElement("div"); box.className="editbox";
     box.innerHTML='<div class="row2"><div><label>'+(rt?"去程(起)":"日期(起)")+'</label><input class="e-df" type="date" value="'+esc(w.dateFrom||"")+'"></div>'
       +'<div><label>日期(迄,留空=單日)</label><input class="e-dt" type="date" value="'+esc(w.dateTo||"")+'"></div></div>'
@@ -496,6 +505,10 @@
       +'</div><div class="row2"><div><label>人數(起)</label><select class="e-smin"></select></div><div><label>人數(迄)</label><select class="e-smax"></select></div></div>'
       +'<div class="row2"><div><label>來源</label><select class="e-src"><option value="airline">官網</option><option value="seatsaero">seats.aero</option></select></div>'
       +'<div><label>每日掃描</label><select class="e-scan"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div></div>'
+      +'<label>通知條件(留空=不限)</label><div class="row2">'
+      +'<div><input class="e-milesmax" type="number" min="1" placeholder="哩程上限" value="'+(nf.milesMax||"")+'"></div>'
+      +'<div><input class="e-taxmax" type="number" min="1" placeholder="稅費上限" value="'+(nf.taxMax||"")+'"></div></div>'
+      +'<label style="margin:6px 0 0;display:inline-flex;gap:6px;align-items:center;color:var(--text)"><input type="checkbox" class="e-direct" style="width:auto"'+(nf.directOnly?" checked":"")+'> 只要直飛才通知</label>'
       +'<div style="display:flex;gap:8px;margin-top:10px"><button class="scan e-save">💾 儲存</button><button class="pause e-cancel">取消</button></div>'
       +'<p class="msg e-msg"></p>';
     fillNum(box.querySelector(".e-smin"),1,9,w.seatsMin!=null?w.seatsMin:2);
@@ -505,10 +518,15 @@
     box.querySelector(".e-cancel").addEventListener("click",function(){box.remove();});
     box.querySelector(".e-save").addEventListener("click",function(){
       var m=box.querySelector(".e-msg"); m.className="msg";
+      var enf={};
+      if(box.querySelector(".e-direct").checked)enf.directOnly=true;
+      if(box.querySelector(".e-milesmax").value)enf.milesMax=Number(box.querySelector(".e-milesmax").value);
+      if(box.querySelector(".e-taxmax").value)enf.taxMax=Number(box.querySelector(".e-taxmax").value);
       var body={dateFrom:box.querySelector(".e-df").value,dateTo:box.querySelector(".e-dt").value||null,
         cabins:[].slice.call(box.querySelectorAll(".e-cab:checked")).map(function(c){return c.value;}),
         seatsMin:parseInt(box.querySelector(".e-smin").value,10),seatsMax:parseInt(box.querySelector(".e-smax").value,10),
-        source:box.querySelector(".e-src").value,scanPerDay:parseInt(box.querySelector(".e-scan").value,10)};
+        source:box.querySelector(".e-src").value,scanPerDay:parseInt(box.querySelector(".e-scan").value,10),
+        notifyFilter:Object.keys(enf).length?enf:null};
       if(rt){body.retFrom=box.querySelector(".e-rf").value;body.retTo=box.querySelector(".e-rt").value||null;}
       if(!body.dateFrom){m.textContent="請選日期";m.className="msg err";return;}
       m.textContent="儲存中…";
@@ -533,6 +551,9 @@
     $("f-seats-min").value=String(w.seatsMin!=null?w.seatsMin:2); $("f-seats-max").value=String(w.seatsMax!=null?w.seatsMax:2);
     $("f-program").value=w.program||"ana"; $("f-source").value=w.source||"airline";
     $("f-scan").value=String(w.scanPerDay||2);
+    var nf=w.notifyFilter||{};
+    $("f-direct").checked=!!nf.directOnly;
+    $("f-milesmax").value=nf.milesMax||""; $("f-taxmax").value=nf.taxMax||"";
     $("f-msg").textContent="已複製「"+w.origin+(rt?"⇄":"→")+w.dest+"」的條件,改好按送出"; $("f-msg").className="msg";
     showTab("add");
     setTimeout(function(){$("f-origin").scrollIntoView({behavior:"smooth",block:"center"});},200);
@@ -836,10 +857,15 @@
     if(!sMin||!sMax||sMin<1||sMax>9||sMin>sMax){m.textContent="人數範圍要 1–9,且起 ≤ 迄";m.className="msg err";return;}
     var cabins=[].slice.call(document.querySelectorAll(".cab:checked")).map(function(c){return c.value;});
     var btn=$("f-submit"); btn.disabled=true; m.textContent="送出中…"; m.className="msg";
+    var nf={};
+    if($("f-direct").checked)nf.directOnly=true;
+    if($("f-milesmax").value)nf.milesMax=Number($("f-milesmax").value);
+    if($("f-taxmax").value)nf.taxMax=Number($("f-taxmax").value);
     api("POST","/api/seats/watch",{origin:origin,dest:dest,dateFrom:dFrom,dateTo:dTo||null,
       tripType:tt,retFrom:tt==="roundtrip"?rFrom:null,retTo:tt==="roundtrip"?(rTo||null):null,
       cabins:cabins,seatsMin:sMin,seatsMax:sMax,program:$("f-program").value,
-      source:$("f-source").value,scanPerDay:parseInt($("f-scan").value,10)},function(e,d){
+      source:$("f-source").value,scanPerDay:parseInt($("f-scan").value,10),
+      notifyFilter:Object.keys(nf).length?nf:null},function(e,d){
       btn.disabled=false;
       if(e){m.textContent="失敗："+e;m.className="msg err";return;}
       m.textContent="✅ 已加入 "+origin+(tt==="roundtrip"?"⇄":"→")+dest; m.className="msg";
