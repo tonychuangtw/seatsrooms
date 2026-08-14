@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>📖 哩程開票規則庫</title>
 <meta name="theme-color" content="#0d0d10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
 <style>
   :root {
     --bg:#0d0d10; --card:#17171c; --border:#2a2a33; --text:#ececf1; --text2:#9a9aa8;
@@ -646,7 +649,15 @@
       +(band&&band[2]<325000?'<span class="maybe">日航同距離只要 '+n(band[2])+' 哩，用日航更省</span>':'<span class="yes">距離夠長，長榮固定價划算</span>')+'</li>';
     html+='</ul>';
     html+='<p class="sub">※ 這裡用大圓距離估算，與各家官方 sector mileage 表可能有 ±3% 差異。貼近級距線時請用日航官網的 Award Sector Mileage Calculator 覆核。</p>';
+    // 算完可以直接把航段丟去主頁的行程專案表單,不用回去逐段重打
+    html+='<button class="primary" id="calc-to-trip" style="margin-top:10px">🌍 把這 '+legs.length+' 段帶進行程專案 →</button>';
     $("calc-out").innerHTML=html;
+    var tb=$("calc-to-trip");
+    if(tb)tb.addEventListener("click",function(){
+      try{localStorage.setItem("seatsrooms.tripPreset",JSON.stringify({
+        legs:legs.map(function(l){return {origin:l.from,dest:l.to};}),t:Date.now()}));}catch(e){}
+      location.href="index.html";
+    });
   }
 
   $("calc-btn").addEventListener("click",calc);

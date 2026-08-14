@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>✈️ 哩程機位監控</title>
 <meta name="theme-color" content="#0d0d10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
 <link rel="stylesheet" href="assets/shared.css?v=20260814">
 <style>
   .badge.no_seats{ color:var(--bad); border-color:var(--bad); }
@@ -23,6 +26,7 @@
   .controls{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; align-items:center; }
   .controls label{ font-size:0.82rem; margin:0; display:flex; align-items:center; gap:5px; }
   .controls select{ width:auto; padding:6px 9px; font-size:0.85rem; }
+  .controls input[type=date]{ width:auto; min-height:34px; padding:5px 7px; font-size:0.8rem; }
   .grp{ margin:16px 0 5px; font-weight:700; display:flex; align-items:center; gap:8px; }
   .grp .prog{ font-size:0.76rem; color:var(--text2); font-weight:400; }
   tr.avail{ background:var(--okbg); } tr.none td{ color:var(--dim); }
@@ -223,6 +227,8 @@
 <div class="controls">
   <label>航空 <select id="rf-air"><option value="">全部</option></select></label>
   <label>艙等 <select id="rf-cabin"><option value="">全部</option></select></label>
+  <label>日期 <input type="date" id="rf-from"> ～ <input type="date" id="rf-to"></label>
+  <label>排序 <select id="rf-sort"><option value="">航空分組</option><option value="date">按日期</option><option value="cpm">按每哩價值</option></select></label>
   <label><input type="checkbox" id="rf-availonly"> 只看有位</label>
 </div>
 <div id="results"><p class="msg">載入中…</p></div>
@@ -236,7 +242,9 @@
   var CABIN_LABEL={economy:"經濟",premium:"豪經",business:"商務",first:"頭等"};
   var PROGRAM_LABEL={ana:"ANA",eva:"長榮",cal:"華航",starlux:"星宇",alaska:"Alaska",asiamiles:"亞萬"};
   var SOURCE_LABEL={airline:"官網",seatsaero:"seats.aero"};
-  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位",check:"🟡 官網有航班(待確認)",waitlist:"⏳ 僅候補",partial:"🟡 部分有位(可分批)"};
+  // 狀態標籤收斂成人話一組,技術細節放 tooltip——七種內部狀態直接攤在畫面上沒人看得懂
+  var STATUS_LABEL={pending:"等待首查",no_seats:"無位",available:"🎉 有位",check:"🟡 待確認",waitlist:"⏳ 候補",partial:"🟡 部分有位"};
+  var STATUS_TIP={check:"官網查得到航班,可訂數待官網確認",waitlist:"目前只有候補位",partial:"位數不足需求人數,可分批訂",pending:"還沒掃過第一輪"};
   // $/esc/token/api/fmtTime… 共用邏輯都在 assets/shared.js
   // 機場座標(與後端 scripts/seatsrooms-monitor/airports-ll.json 同一份),只用來即時顯示段距離
   var AP={};
@@ -358,7 +366,7 @@
       var avHtml=av.length?('<div class="avlist">可訂：<br>'+av.slice(0,MAXAV).join("<br>")
         +(av.length>MAXAV?"<br>… 還有 "+(av.length-MAXAV)+" 筆(見下方結果表)":"")+"</div>"):"";
       div.innerHTML='<div class="entry-head"><div>'
-        +'<div class="entry-name">'+esc(w.origin)+(rt?" ⇄ ":" → ")+esc(w.dest)+' <span class="badge '+badge+'">'+esc(st)+"</span>"
+        +'<div class="entry-name">'+esc(w.origin)+(rt?" ⇄ ":" → ")+esc(w.dest)+' <span class="badge '+badge+'"'+(STATUS_TIP[w.status]?' title="'+esc(STATUS_TIP[w.status])+'"':"")+'>'+esc(st)+"</span>"
         +(rt&&w.legStatus?' <span style="font-size:0.75rem;color:var(--text2)">去程 '+esc(STATUS_LABEL[w.legStatus.out]||w.legStatus.out||"—")
           +' · 回程 '+esc(STATUS_LABEL[w.legStatus.ret]||w.legStatus.ret||"—")+"</span>":"")+"</div>"
         +'<div class="entry-meta">'+esc(dt)+" · "+esc(cabTxt)+" · "+esc(seatTxt)+" · "+esc(PROGRAM_LABEL[w.program]||w.program)
@@ -405,6 +413,12 @@
   function refreshWatch(){ api("GET","/api/seats/watch",null,function(e,d){
     if(e){$("watchlist").innerHTML='<p class="msg err">載入失敗：'+esc(e)+"</p>";return;}
     ROLE=(d&&d.role)||"owner"; ME=(d&&d.me)||null; applyRole();
+    // seats.aero 健康燈：取所有啟用中 seatsaero 需求的最新 lastChecked
+    SA_LAST=null;
+    (d.watches||[]).forEach(function(w){
+      if(w.source==="seatsaero"&&w.active!==false&&w.lastChecked&&(SA_LAST==null||w.lastChecked>SA_LAST))SA_LAST=w.lastChecked;
+    });
+    renderHealth(undefined);
     // 行程的 leg 不混進單點需求清單,不然一條環球票會塞 8 列進去
     renderWatch((d.watches||[]).filter(function(w){return !w.tripId;}));
     renderTripList(d.trips||[],d.watches||[]); }); }
@@ -720,41 +734,68 @@
   }
   // 掃描健康燈：<14h 綠(每日2掃的正常節奏)、14-28h 黃、更久或沒資料=紅
   var HL_NAME={cal:"華航",ana:"ANA",alaska:"Alaska",starlux:"星宇"};
+  // seats.aero 那條線(eva/亞萬走這裡)以前沒有健康顯示——用 watchlist 的 lastChecked 補上
+  // 掃描器每 10 分跑一輪、per-entry 14 分 gate,正常節奏 <2h 綠
+  var LAST_H=null, SA_LAST=null;
+  function saChip(){
+    if(SA_LAST==null)return "";
+    var age=Date.now()-SA_LAST;
+    var cls=age<2*3600e3?"g":(age<6*3600e3?"y":"r");
+    return '<span><i class="'+cls+'"></i>seats.aero '+fmtAge(age)+"</span>";
+  }
   function renderHealth(h){
+    if(h!==undefined)LAST_H=h;
     var el=$("health"); if(!el)return;
-    el.innerHTML=healthHtml(h,HL_NAME,14,28);
+    var base=healthHtml(LAST_H,HL_NAME,14,28), sa=saChip();
+    el.innerHTML=base?base+sa:(sa?'<span style="border:none;background:none;padding:3px 0">掃描健康：</span>'+sa:"");
+  }
+  function rowHtml(r,withAir){
+    var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
+    var sb=r.status==="available"?(r.partial?'<span class="badge partial" title="位數不足需求人數,可分批訂">有位·分批</span>':'<span class="badge available">有位</span>'):(r.status==="waitlist"?'<span class="badge pending" title="只有候補位">⏳候補</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending" title="官網查得到航班,可訂數待確認">待確認</span>')));
+    // 🆕 = 24 小時內剛從無位轉有位的列（aggregate 記 firstAvail）
+    if(r.firstAvail&&(Date.now()-r.firstAvail)<86400000)sb='<span class="badge new">🆕</span> '+sb;
+    var milesHtml=esc(r.miles||"");
+    if(r.cashTwd)milesHtml+='<div class="cpm'+(r.cpm&&r.cpm>=0.8?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
+    var bk=(r.status==="available"||r.status==="waitlist")?bookUrl(r):null;
+    return '<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)
+      +(r.leg?' <span class="badge" style="background:var(--chip);color:var(--text2)">'+esc(r.leg)+"</span>":"")
+      +'</td>'+(withAir?'<td data-l="航空" class="flt">'+esc(r.airline||"")+'</td>':"")
+      +'<td data-l="日期">'+esc(r.date||"")
+      +'</td><td data-l="艙等">'+esc(r.cabin||"")+'</td><td data-l="狀態">'+sb+'</td><td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")
+      +'</td><td data-l="哩程">'+milesHtml+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")
+      +'</td><td class="nolab" data-l="">'+(bk?'<a class="book" target="_blank" rel="noopener" href="'+bk+'">開票 ↗</a>':"")+"</td></tr>";
   }
   function renderResults(){
     var air=$("rf-air").value, cabin=$("rf-cabin").value, availOnly=$("rf-availonly").checked;
+    var dF=$("rf-from").value, dT=$("rf-to").value, sort=$("rf-sort").value;
     var rows=ALL.filter(function(r){
       if(air&&r.airline!==air)return false;
       if(cabin&&(r.cabin||"").indexOf(cabin)<0)return false;
-      if(availOnly&&r.status!=="available")return false; return true;});
+      if(availOnly&&r.status!=="available")return false;
+      if(dF&&(!r.date||r.date<dF))return false;
+      if(dT&&(!r.date||r.date>dT))return false;
+      return true;});
     var el=$("results");
     if(!rows.length){el.innerHTML=ALL.length?'<p class="msg">目前沒有符合條件的項目。</p>':'<p class="msg">還沒有監控結果 —— 上方登入後用表單新增需求,掃描後結果會顯示在這裡。</p>';return;}
-    var groups={},order=[]; rows.forEach(function(r){if(!groups[r.airline]){groups[r.airline]=[];order.push(r.airline);}groups[r.airline].push(r);});
     var html="";
-    order.forEach(function(a){
-      var g=groups[a],navail=g.filter(function(r){return r.status==="available";}).length;
-      html+='<div class="grp">'+esc(a)+' <span class="prog">'+esc(g[0].program||"")+' · 有位 '+navail+'/'+g.length+'</span></div>';
-      html+='<table class="rtab"><thead><tr><th>路線</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th><th></th></tr></thead><tbody>';
-      g.forEach(function(r){
-        var cls=r.status==="available"?"avail":(r.status==="none"?"none":"");
-        var sb=r.status==="available"?(r.partial?'<span class="badge partial">有位·分批</span>':'<span class="badge available">有位</span>'):(r.status==="waitlist"?'<span class="badge pending">⏳候補</span>':(r.status==="none"?'<span class="badge no_seats">無位</span>':(r.status==="pending"?'<span class="badge pending">等待首掃</span>':'<span class="badge pending">待確認</span>')));
-        // 🆕 = 24 小時內剛從無位轉有位的列（aggregate 記 firstAvail）
-        if(r.firstAvail&&(Date.now()-r.firstAvail)<86400000)sb='<span class="badge new">🆕</span> '+sb;
-        var milesHtml=esc(r.miles||"");
-        if(r.cashTwd)milesHtml+='<div class="cpm'+(r.cpm&&r.cpm>=0.8?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
-        var bk=(r.status==="available"||r.status==="waitlist")?bookUrl(r):null;
-        html+='<tr class="'+cls+'"><td class="main" data-l="路線">'+esc(r.route)
-          +(r.leg?' <span class="badge" style="background:var(--chip);color:var(--text2)">'+esc(r.leg)+"</span>":"")
-          +'</td><td data-l="日期">'+esc(r.date||"")
-          +'</td><td data-l="艙等">'+esc(r.cabin||"")+'</td><td data-l="狀態">'+sb+'</td><td data-l="可訂" class="'+(r.status==="available"?"rt":"")+'">'+esc(r.avail||"")
-          +'</td><td data-l="哩程">'+milesHtml+'</td><td data-l="稅">'+esc(r.tax||"")+'</td><td data-l="航班" class="flt">'+esc(r.flight||"")
-          +'</td><td class="nolab" data-l="">'+(bk?'<a class="book" target="_blank" rel="noopener" href="'+bk+'">開票 ↗</a>':"")+"</td></tr>";
-      });
+    if(sort){
+      // 排序模式：不分航空,一張平表(哩程玩家要的是「哪天最便宜/最快」,不是「哪家」)
+      rows=rows.slice();
+      if(sort==="date")rows.sort(function(a,b){return (a.date||"9999")<(b.date||"9999")?-1:((a.date||"9999")>(b.date||"9999")?1:0);});
+      else if(sort==="cpm")rows.sort(function(a,b){return (b.cpm||0)-(a.cpm||0);});
+      html+='<table class="rtab"><thead><tr><th>路線</th><th>航空</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th><th></th></tr></thead><tbody>';
+      rows.forEach(function(r){html+=rowHtml(r,true);});
       html+='</tbody></table>';
-    });
+    } else {
+      var groups={},order=[]; rows.forEach(function(r){if(!groups[r.airline]){groups[r.airline]=[];order.push(r.airline);}groups[r.airline].push(r);});
+      order.forEach(function(a){
+        var g=groups[a],navail=g.filter(function(r){return r.status==="available";}).length;
+        html+='<div class="grp">'+esc(a)+' <span class="prog">'+esc(g[0].program||"")+' · 有位 '+navail+'/'+g.length+'</span></div>';
+        html+='<table class="rtab"><thead><tr><th>路線</th><th>日期</th><th>艙等</th><th>狀態</th><th>可訂</th><th>哩程</th><th>稅</th><th>航班</th><th></th></tr></thead><tbody>';
+        g.forEach(function(r){html+=rowHtml(r,false);});
+        html+='</tbody></table>';
+      });
+    }
     el.innerHTML=html;
   }
   function loadResults(){
@@ -805,7 +846,7 @@
       loadResults();
     });
   });
-  ["rf-air","rf-cabin","rf-availonly"].forEach(function(id){$(id).addEventListener("change",renderResults);});
+  ["rf-air","rf-cabin","rf-availonly","rf-from","rf-to","rf-sort"].forEach(function(id){$(id).addEventListener("change",renderResults);});
 
   function showApp(){$("signin-card").classList.add("hidden");$("app").classList.remove("hidden");refreshSession();refreshWatch();loadRegions();loadResults();}
   function signOut(){try{sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESS_KEY);}catch(e){}$("app").classList.add("hidden");$("signin-card").classList.remove("hidden");loadResults();}
@@ -820,6 +861,17 @@
     });
     fillNum($("x-seats"),1,9,2," 位以上");
     addLeg(); addLeg();
+    // rules.html 距離計算器「帶進行程專案」丟過來的航段(10 分內有效,用完即丟)
+    try{
+      var tp=localStorage.getItem("seatsrooms.tripPreset");
+      if(tp){ localStorage.removeItem("seatsrooms.tripPreset");
+        var tpo=JSON.parse(tp);
+        if(tpo&&tpo.legs&&tpo.legs.length&&(Date.now()-(tpo.t||0))<600000){
+          $("t-legs").innerHTML="";
+          tpo.legs.forEach(function(l){ addLeg({origin:l.origin,dest:l.dest}); });
+          setTimeout(function(){ $("t-name").scrollIntoView({behavior:"smooth",block:"center"}); },300);
+        } }
+    }catch(e){}
     $("t-addleg").addEventListener("click",function(){ addLeg(); });
     $("t-submit").addEventListener("click",submitTrip);
     $("x-submit").addEventListener("click",explore);

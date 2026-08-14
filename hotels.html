@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>🏨 飯店房況監控</title>
 <meta name="theme-color" content="#0d0d10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
 <link rel="stylesheet" href="assets/shared.css?v=20260814">
 <style>
   .badge.cash_only{ color:var(--warn); border-color:#5a441a; }
@@ -305,11 +308,20 @@
     return '<p style="margin:0 0 8px;font-weight:600">🔎 '+esc(p.city)+'　'+esc(p.checkIn||"")+" ~ "+esc(p.checkOut||"")
       +'<span style="font-weight:400;color:var(--dim)">（'+(d.nights||"?")+" 晚 · "+(p.adults||2)+" 人）"+esc(t)+"</span></p>";
   }
+  var XH_SORT="cpp";
   function renderExplore(d){
-    var rows=d.rows||[], el=$("xh-result");
+    var rows=(d.rows||[]).slice(), el=$("xh-result");
     if(!rows.length){el.innerHTML=exploreHead(d)+'<p class="msg">這個城市這期間兩集團都查不到（或名稱拼法不對，換英文試試）。</p>';return;}
     var CH={marriott:"萬豪",hyatt:"凱悅",other:"其他"};
-    var html=exploreHead(d)+'<table class="rtab"><thead><tr><th>飯店</th><th>集團</th><th>點數/整段</th><th>現金/晚</th><th>每點價值</th><th></th></tr></thead><tbody>';
+    // 可排序：預設每點價值高→低(值得換的先看),也可看現金最便宜/點數最少
+    if(XH_SORT==="cash")rows.sort(function(a,b){return (a.cashNightTwd==null?1e15:a.cashNightTwd)-(b.cashNightTwd==null?1e15:b.cashNightTwd);});
+    else if(XH_SORT==="pts")rows.sort(function(a,b){return (a.ptsStay==null?1e15:a.ptsStay)-(b.ptsStay==null?1e15:b.ptsStay);});
+    else rows.sort(function(a,b){return (b.cpp==null?-1:b.cpp)-(a.cpp==null?-1:a.cpp);});
+    var html=exploreHead(d)
+      +'<div style="margin:0 0 8px"><label style="font-size:0.82rem;display:inline-flex;gap:5px;align-items:center;margin:0">排序 '
+      +'<select id="xh-sort" style="width:auto;padding:6px 9px;font-size:0.85rem">'
+      +'<option value="cpp">每點價值高→低</option><option value="cash">現金低→高</option><option value="pts">點數低→高</option></select></label></div>'
+      +'<table class="rtab"><thead><tr><th>飯店</th><th>集團</th><th>點數/整段</th><th>現金/晚</th><th>每點價值</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r,i){
       var vc=valClass(r.chain,r.cpp), tag=valTag(r.chain,r.cpp);
       html+='<tr'+(vc==="glow"?' style="background:var(--okbg)"':'')+'><td class="main" data-l="飯店">'+esc(r.name)+' <span class="flt" style="color:var(--dim);font-size:0.72rem">'+esc(r.src||"")+"</span></td>"
@@ -320,6 +332,8 @@
         +'<td data-l="">'+(r.chain!=="other"?'<button class="scan xh-w" data-i="'+i+'">🔔 監控</button>':"")+"</td></tr>";
     });
     el.innerHTML=html+"</tbody></table>";
+    var ss=$("xh-sort");
+    if(ss){ ss.value=XH_SORT; ss.addEventListener("change",function(){ XH_SORT=ss.value; renderExplore(d); }); }
     el.querySelectorAll(".xh-w").forEach(function(btn){
       btn.addEventListener("click",function(){
         var r=rows[parseInt(btn.getAttribute("data-i"),10)];
