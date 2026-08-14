@@ -1048,10 +1048,13 @@
         var ic=ev.status==="available"?"🟢":(ev.status==="no_seats"||ev.status==="no_rooms"?"🔴":(ev.status==="cash_only"?"💰":"🟡"));
         var what=ev.kind==="rooms"?((ev.chain==="marriott"?"萬豪 ":"凱悅 ")+ev.label):((PROGRAM_LABEL[ev.program]||"")+" "+ev.label);
         var st=ev.kind==="rooms"?(RSTATUS[ev.status]||ev.status):(STATUS_LABEL[ev.status]||ev.status);
-        // 降價/降點數亮顯:比上一次掃描便宜就標跌幅,整行換亮眼色
+        // 降價/降點數亮顯:跌幅 ≥3% 才標——1-2% 的小波動多半是匯率/報價抖動,標了只是雜訊
         var drops=[];
-        if(ev.prevPoints&&ev.points!=null)drops.push("點數↓"+Math.round((1-ev.points/ev.prevPoints)*100)+"%（"+Number(ev.prevPoints).toLocaleString()+"→"+Number(ev.points).toLocaleString()+"）");
-        if(ev.prevCash&&ev.cash!=null)drops.push("現金↓"+Math.round((1-ev.cash/ev.prevCash)*100)+"%（"+Number(ev.prevCash).toLocaleString()+"→"+Number(ev.cash).toLocaleString()+"）");
+        function dropPct(now,prev){ return (1-now/prev)*100; }
+        if(ev.prevPoints&&ev.points!=null&&dropPct(ev.points,ev.prevPoints)>=3)
+          drops.push("點數↓"+Math.round(dropPct(ev.points,ev.prevPoints))+"%（"+Number(ev.prevPoints).toLocaleString()+"→"+Number(ev.points).toLocaleString()+"）");
+        if(ev.prevCash&&ev.cash!=null&&dropPct(ev.cash,ev.prevCash)>=3)
+          drops.push("現金↓"+Math.round(dropPct(ev.cash,ev.prevCash))+"%（"+Number(ev.prevCash).toLocaleString()+"→"+Number(ev.cash).toLocaleString()+"）");
         html+='<div class="ev'+(drops.length?" drop":"")+'">'+fmtTime(ev.t)+"　"+(drops.length?"📉":ic)+" "+esc(what)+" → "+esc(st)
           +(ev.n?"（"+ev.n+" 筆）":"")+(drops.length?" <b>"+esc(drops.join(" · "))+"</b>":"")+"</div>";
       });
