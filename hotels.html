@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/shared.css?v=20260814">
+<link rel="stylesheet" href="assets/shared.css?v=20260815">
 <style>
   .badge.cash_only{ color:var(--warn); border-color:#5a441a; }
   .badge.no_rooms{ color:var(--bad); border-color:var(--bad); }
@@ -104,7 +104,7 @@
 <p class="foot">萬豪直掃官網(日圓自動換算台幣) · 凱悅點數走 rooms.aero、現金走 Google 官網價 · 每日 3 掃＋降價推播 · 頁面每 5 分自動刷新</p>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="assets/shared.js?v=20260814b"></script>
+<script src="assets/shared.js?v=20260815"></script>
 <script>
 (function () {
   "use strict";
@@ -147,11 +147,12 @@
         +"</div></div>";
       var pb=div.querySelector(".pause");
       if(pb)pb.addEventListener("click",function(){
-        api("PATCH","/api/rooms/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch(d.hotels);});});
+        api("PATCH","/api/rooms/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){toast("更新失敗："+e,"err");return;}renderWatch(d.hotels);});});
       var db=div.querySelector(".del");
       if(db)db.addEventListener("click",function(){
-        if(!confirm("停止監控 "+w.hotelName+"？"))return;
-        api("DELETE","/api/rooms/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){alert("刪除失敗："+e);return;}renderWatch(d.hotels);});});
+        confirmDlg("停止監控 "+w.hotelName+"？",function(){
+          api("DELETE","/api/rooms/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){toast("刪除失敗："+e,"err");return;}toast("已停止監控","ok");renderWatch(d.hotels);});
+        },{title:"停止監控",okText:"停止監控"});});
       el.appendChild(div);
     });
   }

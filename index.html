@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/shared.css?v=20260814">
+<link rel="stylesheet" href="assets/shared.css?v=20260815">
 <style>
   .badge.no_seats{ color:var(--bad); border-color:var(--bad); }
   .src-air{ color:var(--ok); } .src-sa{ color:var(--accent); }
@@ -285,7 +285,7 @@
 <p class="foot">官網監控在 1800(camoufox 仿真人)定時掃描 · 結果每 30 分自動彙整更新 · 頁面每 5 分自動刷新</p>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="assets/shared.js?v=20260814b"></script>
+<script src="assets/shared.js?v=20260815"></script>
 <script>
 (function () {
   "use strict";
@@ -338,7 +338,7 @@
           +'<div class="btn-row"><button class="del">移除</button></div></div>';
         row.querySelector(".del").addEventListener("click",function(){
           api("DELETE","/api/grants?app=seatsrooms&viewerEmail="+encodeURIComponent(em),null,function(e2){
-            if(e2){alert("移除失敗："+e2);return;} loadGrants(); });});
+            if(e2){toast("移除失敗："+e2,"err");return;} loadGrants(); });});
         el.appendChild(row);
       });
     });
@@ -466,7 +466,7 @@
       if(sb)sb.addEventListener("click",function(){
         sb.disabled=true; sb.textContent="⏳ 掃描中…";
         api("POST","/api/seats/scan/"+encodeURIComponent(w.id),{},function(e,d){
-          if(e){alert("觸發失敗："+e);sb.disabled=false;sb.textContent="⚡ 立即掃";return;}
+          if(e){toast("觸發失敗："+e,"err");sb.disabled=false;sb.textContent="⚡ 立即掃";return;}
           sb.textContent="✅ 已觸發";
           var pm=$("push-msg");
           if(d&&d.mode==="airline"){
@@ -487,11 +487,12 @@
       if(cb)cb.addEventListener("click",function(){ copyToForm(w); });
       var pb=div.querySelector(".pause:not(.ed):not(.cp)");
       if(pb)pb.addEventListener("click",function(){
-        api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){alert("更新失敗："+e);return;}renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});});
+        api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){toast("更新失敗："+e,"err");return;}renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});});
       var db=div.querySelector(".del");
       if(db)db.addEventListener("click",function(){
-        if(!confirm("停止監控 "+w.origin+"→"+w.dest+"？"))return;
-        api("DELETE","/api/seats/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){alert("刪除失敗："+e);return;}renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});});
+        confirmDlg("停止監控 "+w.origin+"→"+w.dest+"？",function(){
+          api("DELETE","/api/seats/watch/"+encodeURIComponent(w.id),null,function(e,d){if(e){toast("刪除失敗："+e,"err");return;}toast("已停止監控","ok");renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});
+        },{title:"停止監控",okText:"停止監控"});});
       el.appendChild(div);
     });
   }
@@ -657,7 +658,7 @@
         api("POST","/api/seats/watch",{origin:h.origin,dest:h.dest,dateFrom:h.date,dateTo:h.date,
           cabins:cabMap[h.cabin]?[cabMap[h.cabin]]:[],seatsMin:n,seatsMax:n,program:prog,
           source:prog==="eva"?"seatsaero":"airline",scanPerDay:2},function(e){
-          if(e){alert("建監控失敗："+e);btn.disabled=false;btn.textContent="🔔 監控";return;}
+          if(e){toast("建監控失敗："+e,"err");btn.disabled=false;btn.textContent="🔔 監控";return;}
           btn.textContent="✅ 已建監控"; refreshWatch();
         });
       });
@@ -755,12 +756,13 @@
       var tp=div.querySelector(".pause");
       if(tp)tp.addEventListener("click",function(){
         api("PATCH","/api/seats/trip/"+encodeURIComponent(t.id),{active:paused},function(e,d){
-          if(e){alert("更新失敗："+e);return;} renderTripList(d.trips,d.watches);});});
+          if(e){toast("更新失敗："+e,"err");return;} renderTripList(d.trips,d.watches);});});
       var td=div.querySelector(".del");
       if(td)td.addEventListener("click",function(){
-        if(!confirm("刪除行程「"+t.name+"」?底下 "+legs.length+" 段監控會一起移除。"))return;
-        api("DELETE","/api/seats/trip/"+encodeURIComponent(t.id),null,function(e,d){
-          if(e){alert("刪除失敗："+e);return;} renderTripList(d.trips,d.watches); refreshWatch();});});
+        confirmDlg("刪除行程「"+t.name+"」?\n底下 "+legs.length+" 段監控會一起移除。",function(){
+          api("DELETE","/api/seats/trip/"+encodeURIComponent(t.id),null,function(e,d){
+            if(e){toast("刪除失敗："+e,"err");return;} toast("行程已刪除","ok"); renderTripList(d.trips,d.watches); refreshWatch();});
+        },{title:"刪除行程",okText:"刪除"});});
       el.appendChild(div);
     });
   }
