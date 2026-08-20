@@ -393,6 +393,20 @@
         return esc(bits.join(" · "));
       });
   }
+  // seats.aero 交叉驗證(2026-08-21):官網掃描是最脆弱的一環,壞掉時常常是「照跑但抓不到東西」,
+  // 看起來就只是沒位。第二來源看得到、官網看不到時要講出來——尤其是連續好幾輪都這樣。
+  function xcheckHtml(w){
+    var x=w.xcheck; if(!x||!x.t)return "";
+    if(x.error)return '<br><span style="color:var(--text2)">🔎 seats.aero 交叉驗證失敗：'+esc(String(x.error).slice(0,60))+"</span>";
+    var when=fmtTime(x.t);
+    if(x.diverged&&x.hits){
+      return '<br><span style="color:var(--warn)">🔎 seats.aero 另外看到 '+x.hits+" 筆（官網說沒位，已連 "+(x.streak||1)+" 輪不一致）"
+        +(x.proxy?"　※夥伴代理視角，不保證訂得到":"")+"</span>"
+        +'<div class="avlist">'+(x.lines||[]).slice(0,4).map(esc).join("<br>")+"</div>";
+    }
+    if(x.hits)return '<br><span style="color:var(--text2)">🔎 seats.aero 也看到 '+x.hits+" 筆（"+when+"）</span>";
+    return '<br><span style="color:var(--text2)">🔎 seats.aero 對照：無（'+when+"）</span>";
+  }
   var TL_CLS={available:"t-av",partial:"t-pa",check:"t-ck",waitlist:"t-ck",no_seats:"t-no"};
   function histTimeline(w){ return timelineHtml(w.history,TL_CLS,STATUS_LABEL); }
   // 釋位規律(近30天,從 history 變化點算)：出位幾次/平均存活多久/多在星期幾——
@@ -428,7 +442,10 @@
     ws.forEach(function(w){
       var div=document.createElement("div"); div.className="entry";
       var paused=w.active===false;
-      var st=paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—");
+      // 日期過完的需求由後端自動下架(expire-watches.js),標成「已過期」跟手動暫停區分開:
+      // 手動暫停按恢復就好,過期的要先改日期,不然一啟用又會被下架。
+      var gone=paused&&w.expired;
+      var st=gone?"🗓 已過期":(paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—"));
       var badge=paused?"paused":esc(w.status||"");
       // 來回需求：去/回各一個日期範圍,兩段都要看得到（只顯示去程等於騙自己）
       var rt=w.tripType==="roundtrip"&&w.retFrom;
@@ -450,7 +467,7 @@
         +(w.notifyFilter?(" · 🔔"+[w.notifyFilter.directOnly?"只直飛":null,
           w.notifyFilter.milesMax?"≤"+Number(w.notifyFilter.milesMax).toLocaleString()+"哩":null,
           w.notifyFilter.taxMax?"稅≤"+Number(w.notifyFilter.taxMax).toLocaleString():null].filter(Boolean).join("/")):"")
-        +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")
+        +"<br>上次掃描 "+fmtTime(w.lastChecked)+(w.note?"<br>"+esc(w.note):"")+xcheckHtml(w)
         +(w.notifyEmail?"<br>👤 "+esc(w.createdBy||w.notifyEmail)+" 建立 · 📧 有位通知寄 email":"")+"</div>"
         +avHtml+histTimeline(w)+availStats(w)+"</div>"
         +'<div class="btn-row">'
@@ -487,6 +504,8 @@
       if(cb)cb.addEventListener("click",function(){ copyToForm(w); });
       var pb=div.querySelector(".pause:not(.ed):not(.cp)");
       if(pb)pb.addEventListener("click",function(){
+        // 過期的直接開編輯面板：日期沒改就啟用,後端會擋、5 分鐘後又被自動下架
+        if(gone){ toast("日期已經過了,改完日期會自動重新啟用","err"); toggleEditPanel(w,div); return; }
         api("PATCH","/api/seats/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){toast("更新失敗："+e,"err");return;}renderWatch((d.watches||[]).filter(function(x){return !x.tripId;}));});});
       var db=div.querySelector(".del");
       if(db)db.addEventListener("click",function(){

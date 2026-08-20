@@ -130,7 +130,10 @@
     hs.forEach(function(w){
       var div=document.createElement("div"); div.className="entry";
       var paused=w.active===false;
-      var st=paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—");
+      // 入住日過了的監控由後端自動下架(expire-watches.js);這頁沒有編輯功能,
+      // 所以過期的只能刪掉重建 —— 標示要講清楚,不要讓人一直按恢復。
+      var gone=paused&&w.expired;
+      var st=gone?"🗓 已過期":(paused?"⏸ 暫停中":(STATUS_LABEL[w.status]||w.status||"—"));
       var badge=paused?"paused":esc(w.status||"");
       var nights=Math.round((new Date(w.checkOut)-new Date(w.checkIn))/86400000);
       div.innerHTML='<div class="entry-head"><div>'
@@ -147,6 +150,7 @@
         +"</div></div>";
       var pb=div.querySelector(".pause");
       if(pb)pb.addEventListener("click",function(){
+        if(gone){ toast("入住日已經過了,請刪掉重建一筆新日期的","err"); return; }
         api("PATCH","/api/rooms/watch/"+encodeURIComponent(w.id),{active:paused},function(e,d){if(e){toast("更新失敗："+e,"err");return;}renderWatch(d.hotels);});});
       var db=div.querySelector(".del");
       if(db)db.addEventListener("click",function(){

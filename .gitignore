@@ -5,3 +5,8 @@ results.json
 cash-prices.json
 rooms-watchlist.json
 rooms-results.json
+rooms-explore.json
+# 以下都是本機執行資料,repo 是公開的,一筆都不能進去（2026-08-21）
+balances.json
+cash-fx.json
+scan-health-state.json
