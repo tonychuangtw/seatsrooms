@@ -201,11 +201,16 @@ function gsiInit(onCred){
     +'</svg>使用 Google 登入';
   fb.addEventListener("click",showOpenExternalHelp);
   el.appendChild(fb);
-  var tries=0;
+  var tries=0,reinjects=0;
   (function tick(){
     if(!window.google||!google.accounts||!google.accounts.id){
-      // 10 秒還沒來就當它被擋了:fallback 鈕留著,補一行說明,不要無限空轉
-      if(++tries>50){ if(!el.querySelector(".gsi-note")){
+      // 10 秒沒來先自動重載 gsi script 最多 2 次（2026-08-23 poker 站教訓:偶發載不進來
+      // 不重試會被誤判成永久被擋）,3 次都失敗才收手:fallback 鈕留著,補一行說明,不要無限空轉
+      if(++tries>50&&reinjects<2){ reinjects++; tries=0;
+        var rs=document.createElement("script"); rs.src="https://accounts.google.com/gsi/client";
+        rs.async=true; document.head.appendChild(rs);
+      }
+      if(tries>50){ if(!el.querySelector(".gsi-note")){
           var p=document.createElement("p"); p.className="msg gsi-note"; p.style.marginTop="8px";
           p.textContent=isInAppBrowser()
             ?"偵測到 App 內建瀏覽器,Google 登入被擋——點上面按鈕看怎麼用外部瀏覽器開"
