@@ -17,7 +17,7 @@ TW = ("TPE", "RMQ", "KHH", "TNN")
 
 routes = collections.defaultdict(dict)
 for r in fares:
-    routes[f"{r['origin']}-{r['destination']}"][r["date"]] = r["amount"]
+    routes[f"{r['origin']}-{r['destination']}"][r["date"]] = r.get("twd") or r["amount"]
 
 data = {}
 for k, days in routes.items():
@@ -220,7 +220,8 @@ footer p{margin:0 0 6px; max-width:78ch}
   <p class="kicker">STARLUX · 自營航線每日最低價</p>
   <h1>星宇價格日曆</h1>
   <p class="sub">星宇官網的月票價日曆給的就是<b>含稅總價</b>（實測 TPE→NRT 日曆 8,574
-     ＝ 票價 6,170 ＋ 稅 2,404），所以這頁不用再加稅。經濟艙、單人、單程；行李與選位另計。</p>
+     ＝ 票價 6,170 ＋ 稅 2,404），所以這頁不用再加稅。海外出發航段官網以當地幣別報價
+     （澳門幣、日圓、美元…），這裡一律換算成台幣。經濟艙、單人、單程；行李與選位另計。</p>
   <div class="meta">
     <span><b>掃描時間</b> __SCANNED__</span>
     <span><b>涵蓋</b> __FROM__ → __TO__</span>

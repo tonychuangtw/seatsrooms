@@ -1,0 +1,35 @@
+{
+ "TPE-MFM|eco": [
+  "Y2TWHM",
+  "Y1TWHM"
+ ],
+ "TPE-NRT|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-BKK|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-CEB|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-CGK|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-CNX|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ]
+}

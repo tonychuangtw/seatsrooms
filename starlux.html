@@ -57,7 +57,7 @@
 </head>
 <body>
 <h1>✨ 星宇價格日曆</h1>
-<p class="sub">星宇自營航線每日最低價 · 官網日曆給的就是含稅總價,不用另外加稅</p>
+<p class="sub">星宇自營航線每日最低價 · 含稅總價 · 海外出發的當地幣別報價已換算台幣</p>
 <div class="nav">
   <a href="index.html">✈️ 機位主頁</a>
   <a href="tigerair.html">🐯 虎航票價</a>
@@ -74,14 +74,45 @@
   <div class="card">
     <h2>選航線</h2>
     <div id="picker"></div>
-    <div class="pickrow">
+    <div class="pickrow" id="dirrow">
       <div class="picklab">方向</div>
       <div class="chips">
         <button class="chip" id="b-out" aria-pressed="true">去程</button>
         <button class="chip" id="b-ret" aria-pressed="false">回程</button>
       </div>
     </div>
+    <div class="pickrow">
+      <div class="picklab">票種</div>
+      <div class="chips" id="modechips">
+        <button class="chip" data-n="0" aria-pressed="true">單程</button>
+        <button class="chip" data-n="2">來回 3天2夜</button>
+        <button class="chip" data-n="3">來回 4天3夜</button>
+        <button class="chip" data-n="4">來回 5天4夜</button>
+        <button class="chip" data-n="5">來回 6天5夜</button>
+        <label class="chip" style="gap:6px">自訂
+          <input id="nights-in" type="number" min="1" max="60" value="7" style="width:52px;padding:2px 6px;min-height:0;font-size:0.82rem"> 晚
+        </label>
+      </div>
+    </div>
+    <p class="msg" id="rtnote" style="display:none;margin:6px 0 0">
+      來回總價 = 去程段 + 回程段（已用官網全程總價驗證）。回程段依「最便宜去程艙等桶」估算：
+      便宜的出發日算得準，貴的出發日可能略微樂觀幾百元；下訂前以官網為準。
+    </p>
     <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="card" id="combo-card" style="display:none">
+    <h2>找最便宜的去回組合</h2>
+    <div class="row2" style="align-items:flex-end">
+      <div><label>最少幾晚</label><input id="c-min" type="number" min="1" max="60" value="2"></div>
+      <div><label>最多幾晚</label><input id="c-max" type="number" min="1" max="60" value="6"></div>
+      <div><label>出發月份（留空＝全部）</label><input id="c-month" type="month"></div>
+      <div><button class="chip" id="c-go" type="button" style="min-height:40px;width:100%">找</button></div>
+    </div>
+    <div class="scroll" style="margin-top:10px"><table id="combo">
+      <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回總價</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
   </div>
 
   <div class="cals" id="cals"></div>
@@ -89,7 +120,7 @@
   <div class="card">
     <h2>這條航線最便宜的 20 天</h2>
     <div class="scroll"><table id="best">
-      <thead><tr><th class="l">日期</th><th class="l">週</th><th>含稅總價</th></tr></thead>
+      <thead id="best-head"><tr><th class="l">日期</th><th class="l">週</th><th>含稅總價</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </div>
@@ -112,8 +143,21 @@
 (function(){
   "use strict";
   var WD=["日","一","二","三","四","五","六"];
-  var R={}, NAMES={}, span={from:null,to:null};
-  var st={origin:null,dest:null,dir:"out"};
+  var R={}, RT={}, NAMES={}, span={from:null,to:null};
+  var st={origin:null,dest:null,dir:"out",nights:0};   // nights 0 = 單程
+  var TWO=["TPE","RMQ","KHH","TNN"];
+
+  function addDays(iso,n){ var d=new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+n);
+    return d.toISOString().slice(0,10); }
+  // 來回總價表 {出發日: {t:總價, g:去程, r:回程, rd:回程日}}
+  function rtDays(k,n){ var v=RT[k]; if(!v) return null; var out={}, any=false;
+    Object.keys(v.go).forEach(function(d){ var rd=addDays(d,n), r=v.ret[rd];
+      if(r){ out[d]={t:v.go[d]+r,g:v.go[d],r:r,rd:rd}; any=true; } });
+    return any?out:null; }
+  function curDays(){ var k=key();
+    if(st.nights>0){ var m=rtDays(k,st.nights); if(!m) return null;
+      var days={}; Object.keys(m).forEach(function(d){ days[d]=m[d].t; }); return {days:days,rt:m}; }
+    return R[k]?{days:R[k],rt:null}:null; }
 
   function city(c){ return NAMES[c]||c; }
   function fmt(n){ return Number(n).toLocaleString("en-US"); }
@@ -164,13 +208,23 @@
 
   function render(){
     buildPicker();
+    var rt=st.nights>0;
+    if(rt) st.dir="out";                       // 來回一律以台灣出發為基準
+    $("dirrow").style.display = rt?"none":"";
+    $("rtnote").style.display = rt?"":"none";
+    $("combo-card").style.display = rt?"":"none";
     $("b-out").setAttribute("aria-pressed", st.dir==="out");
     $("b-ret").setAttribute("aria-pressed", st.dir==="ret");
-    var days=R[key()];
+    document.querySelectorAll("#modechips .chip[data-n]").forEach(function(b){
+      b.setAttribute("aria-pressed", +b.dataset.n===st.nights); });
+    var cur=curDays(), days=cur&&cur.days;
     var tb=document.querySelector("#best tbody");
+    $("best-head").innerHTML = rt
+      ? '<tr><th class="l">出發</th><th class="l">週</th><th class="l">回程</th><th>去程</th><th>回程</th><th>來回總價</th></tr>'
+      : '<tr><th class="l">日期</th><th class="l">週</th><th>含稅總價</th></tr>';
     if(!days){
       $("stats").innerHTML='<div class="st"><div class="l">這個方向</div><div class="v">—</div>'+
-        '<div class="l">星宇沒有這個方向的航班</div></div>';
+        '<div class="l">'+(rt?"這條航線沒有來回資料（來回只掃台灣出發）":"星宇沒有這個方向的航班")+'</div></div>';
       $("cals").innerHTML=""; tb.innerHTML=""; return;
     }
     var ps=Object.keys(days).map(function(d){return days[d];}).sort(function(a,b){return a-b;});
@@ -179,7 +233,7 @@
     var med=ps[Math.floor(ps.length/2)];
 
     $("stats").innerHTML=[
-      ["最低價", fmt(lo), "含稅單程", true],
+      ["最低價", fmt(lo), rt?("含稅來回 "+(st.nights+1)+"天"+st.nights+"夜"):"含稅單程", true],
       ["中位數", fmt(med), "一半的日子比這便宜", false],
       ["最高價", fmt(hi), "整段期間最貴", false],
       ["有票天數", Object.keys(days).length, span.from+" → "+span.to, false]
@@ -216,14 +270,37 @@
     tb.innerHTML=Object.keys(days).sort(function(a,b){ return days[a]-days[b]; })
       .slice(0,20).map(function(d){
         var wd=new Date(d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
+        if(rt){ var x=cur.rt[d];
+          return '<tr><td class="l n">'+esc(d)+'</td><td class="l'+we+'">'+WD[wd]+"</td>"+
+            '<td class="l n">'+esc(x.rd)+'</td><td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+"</td>"+
+            '<td class="n tot">'+fmt(x.t)+"</td></tr>"; }
         return '<tr><td class="l n">'+esc(d)+'</td><td class="l'+we+'">'+WD[wd]+"</td>"+
           '<td class="n tot">'+fmt(days[d])+"</td></tr>";
       }).join("");
   }
 
+  // 找最便宜的去回組合：給晚數範圍（＋可選出發月），列前 15 組
+  function findCombos(){
+    var v=RT[key()]; var body=document.querySelector("#combo tbody");
+    if(!v){ body.innerHTML='<tr><td colspan="6" class="l">這條航線沒有來回資料</td></tr>'; return; }
+    var mn=Math.max(1,+$("c-min").value||1), mx=Math.max(mn,+$("c-max").value||mn), ym=$("c-month").value;
+    var out=[];
+    Object.keys(v.go).forEach(function(d){ if(ym && d.indexOf(ym)!==0) return;
+      for(var n=mn;n<=mx;n++){ var rd=addDays(d,n), r=v.ret[rd]; if(r) out.push({d:d,rd:rd,n:n,g:v.go[d],r:r,t:v.go[d]+r}); } });
+    out.sort(function(a,b){ return a.t-b.t||a.d.localeCompare(b.d); });
+    body.innerHTML = out.length ? out.slice(0,15).map(function(x){
+      var wd=new Date(x.d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
+      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n\">"+esc(x.rd)+"</td>"+
+        '<td class="n">'+x.n+'</td><td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+'</td><td class="n tot">'+fmt(x.t)+"</td></tr>";
+    }).join("") : '<tr><td colspan="6" class="l">這個範圍沒有可組合的日期</td></tr>';
+  }
+
   function renderAll(){
-    var rows=Object.keys(R).map(function(k){
-      var days=R[k], best=null;
+    var rt=st.nights>0;
+    var keys = rt ? Object.keys(RT).filter(function(k){ return rtDays(k,st.nights); }) : Object.keys(R);
+    var rows=keys.map(function(k){
+      var days = rt ? (function(){ var m=rtDays(k,st.nights), o={}; Object.keys(m).forEach(function(d){o[d]=m[d].t;}); return o; })() : R[k];
+      var best=null;
       Object.keys(days).forEach(function(d){ if(!best||days[d]<best[1]) best=[d,days[d]]; });
       return {k:k,date:best[0],p:best[1]};
     }).sort(function(a,b){ return a.p-b.p; });
@@ -238,11 +315,11 @@
   function load(){
     api("GET","/api/starlux/prices",null,function(e,d){
       if(e){ toast("讀取失敗："+e,"err"); return; }
-      NAMES=d.names||{}; R={};
+      NAMES=d.names||{}; R={}; RT=(d.rt&&d.rt.routes)||{};
       (d.fares||[]).forEach(function(f){
         var k=f.origin+"-"+f.destination;
         if(!R[k]) R[k]={};
-        R[k][f.date]=f.amount;
+        R[k][f.date]=(f.twd!=null?f.twd:f.amount);   // 海外出發是當地幣別,後端已換算台幣
       });
       var all=[];
       Object.keys(R).forEach(function(k){ all=all.concat(Object.keys(R[k])); });
@@ -266,6 +343,10 @@
   window.addEventListener("load",function(){
     $("b-out").addEventListener("click",function(){ st.dir="out"; render(); });
     $("b-ret").addEventListener("click",function(){ st.dir="ret"; render(); });
+    document.querySelectorAll("#modechips .chip[data-n]").forEach(function(b){
+      b.addEventListener("click",function(){ st.nights=+b.dataset.n; renderAll(); render(); }); });
+    $("nights-in").addEventListener("change",function(){ var n=+this.value; if(n>0){ st.nights=n; renderAll(); render(); } });
+    $("c-go").addEventListener("click",findCombos);
     gsiInit(showApp); if(token()) showApp();
   });
 })();

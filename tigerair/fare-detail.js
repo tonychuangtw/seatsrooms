@@ -27,7 +27,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // 在頁面內跑的函式：走完 waiting-room → recaptcha → create session → flight search result
 const IN_PAGE = args => `(async () => {
-  const { origin, destination, date, sitekey, adult } = ${JSON.stringify(args)};
+  const { origin, destination, date, sitekey, adult, returnDate } = ${JSON.stringify(args)};
   const deviceId = crypto.randomUUID();
   const H = {
     'Content-Type': 'application/json',
@@ -94,8 +94,10 @@ const IN_PAGE = args => `(async () => {
     }\`,
     variables: { input: {
       adultCount: adult, childCount: 0, infantCount: 0,
-      departureDate: date, stationPairs: [{ origin, destination }],
-      userCurrency: 'TWD', flightType: 'oneWay',
+      departureDate: date, returnDate: returnDate || null,
+      stationPairs: returnDate ? [{ origin, destination }, { origin: destination, destination: origin }]
+                               : [{ origin, destination }],
+      userCurrency: 'TWD', flightType: returnDate ? 'roundTrip' : 'oneWay',
       waitingRoomToken: gt.access_token, recaptchaTokenV3: rc2,
     } },
   }) });
@@ -134,6 +136,9 @@ async function main() {
   const delayIdx = args.indexOf('--delay');
   let delay = 9000;
   if (delayIdx >= 0) { delay = parseInt(args[delayIdx + 1], 10) * 1000; args.splice(delayIdx, 2); }
+  const retIdx = args.indexOf('--return');
+  let returnDate = null;
+  if (retIdx >= 0) { returnDate = args[retIdx + 1]; args.splice(retIdx, 2); }
   const adultIdx = args.indexOf('--adult');
   let adult = 1;
   if (adultIdx >= 0) { adult = parseInt(args[adultIdx + 1], 10); args.splice(adultIdx, 2); }
@@ -170,7 +175,7 @@ async function main() {
       let r;
       try {
         const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult }),
+          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate }),
         });
         r = res.result;
       } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
@@ -181,7 +186,7 @@ async function main() {
         await openTab();
         try {
           const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult }),
+            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate }),
           });
           r = res.result;
         } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
