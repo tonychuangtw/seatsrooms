@@ -1000,6 +1000,8 @@
     var milesHtml=esc(r.miles||"");
     if(vtier)milesHtml+=' <span class="badge valbadge">'+(vtier===2?"🔥 超值":"✨ 划算")+"</span>";
     if(r.cashTwd)milesHtml+='<div class="cpm'+(vtier?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
+    // 星宇官網同日含稅價：Google 給的是「當天最便宜的任一家」,這個是「星宇自己賣多少」
+    if(r.jxCashTwd)milesHtml+='<div class="cpm">星宇官網同日 NT$'+Number(r.jxCashTwd).toLocaleString()+"</div>";
     // 餘額比對：有填該計畫餘額且哩程數字可解析時,標夠不夠開(以每人所需哩程計)
     var bpk=progKeyOf(r);
     if(r.status==="available"&&bpk&&BAL[bpk]&&BAL[bpk].miles!=null){
