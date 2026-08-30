@@ -11,3 +11,9 @@ balances.json
 cash-fx.json
 scan-health-state.json
 PROGRESS.md
+tigerair/baseline*.json
+tigerair/watch-state.json
+tigerair/verify-last.json
+tigerair/.backfill-last.json
+tigerair/tigerclub-token.json
+tigerair/__pycache__/
