@@ -17,3 +17,6 @@ tigerair/verify-last.json
 tigerair/.backfill-last.json
 tigerair/tigerclub-token.json
 tigerair/__pycache__/
+tigerair/.watch-state-promo.json
+tigerair/.backfill-state.json
+tigerair/.verify-stamp

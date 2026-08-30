@@ -5,7 +5,8 @@
   python3 watch.py --dry           # 只印不推播
   python3 watch.py --init          # 用目前價格當基準，不推播
 
-watchlist.json 一筆長這樣（threshold 是「含稅總價」門檻，省略就只看創新低）：
+watchlist.json 一筆長這樣（threshold 比含稅總價、thresholdNet 比官網未稅價，
+兩個都省略就只看創新低；"allRoutes": true 會展開成全部台灣進出的航向）：
   {"route": "KHH-CJU", "since": "2026-09-16", "until": "2027-03-27",
    "threshold": 3000, "note": "濟州，時間都可看"}
 
@@ -15,10 +16,12 @@ import argparse, json, os, subprocess, sys, time, urllib.request, urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from scan import daily_prices, load_tax  # noqa: E402
+from scan import all_routes, daily_prices, load_tax  # noqa: E402
 
 WATCHLIST = os.path.join(HERE, "watchlist.json")
 STATE = os.path.join(HERE, "watch-state.json")
+VERIFY_STAMP = os.path.join(HERE, ".verify-stamp")
+VERIFY_COOLDOWN = 8 * 60   # 秒
 TG_ENV = os.environ.get("TG_ENV_FILE") or os.path.expanduser(
     "~/.claude/channels/telegram-seatsrooms/.env")
 CHAT_ID = 711631512
@@ -45,9 +48,19 @@ def tg(text):
 
 def verify(hits):
     """票價日曆是快取值，可能跟即時報價對不上。對最便宜的幾筆做即時查詢，
-    順便把剩餘座位帶回來（要 camofox :9377；沒有就靜默略過）。"""
+    順便把剩餘座位帶回來（要 camofox :9377；沒有就靜默略過）。
+
+    促銷期間 watch 每分鐘跑一輪，每輪都開瀏覽器過 reCAPTCHA 會把分數打爆、
+    而且一輪就跑掉一分多鐘。所以加冷卻：8 分鐘內驗過就不再驗，價格照推。"""
     if not hits:
         return
+    try:
+        if time.time() - os.path.getmtime(VERIFY_STAMP) < VERIFY_COOLDOWN:
+            print("即時覆核冷卻中，這輪只推快取價")
+            return
+    except OSError:
+        pass
+    open(VERIFY_STAMP, "w").write(str(int(time.time())))
     args = []
     for h in hits:
         o, d = h["w"]["route"].split("-")
@@ -55,7 +68,8 @@ def verify(hits):
     out = os.path.join(HERE, "verify-last.json")
     try:
         subprocess.run(["node", os.path.join(HERE, "fare-detail.js"), *args, "--out", out],
-                       cwd=HERE, timeout=240, capture_output=True, check=True)
+                       cwd=HERE, timeout=240, capture_output=True, check=True,
+                       env={**os.environ, "TIGERAIR_CF_USER": "tigerair-watch"})
         detail = json.load(open(out))
     except Exception as e:
         print(f"即時覆核跳過：{str(e)[:120]}")
@@ -90,12 +104,26 @@ def main():
     ap.add_argument("--init", action="store_true", help="建立基準，不推播")
     ap.add_argument("--verify", type=int, default=3, metavar="N",
                     help="用即時查詢覆核前 N 筆（含剩餘座位）；0 = 關閉")
+    ap.add_argument("--list", default=WATCHLIST, metavar="FILE",
+                    help="要跑哪份 watchlist（預設 watchlist.json）")
+    ap.add_argument("--state", default=STATE, metavar="FILE", help="狀態檔")
     a = ap.parse_args()
 
-    watches = json.load(open(WATCHLIST))
+    watches = json.load(open(a.list))
+    # allRoutes: true 的項目展開成全部台灣進出的航向（促銷期間全網撿便宜用）
+    expanded = []
+    for w in watches:
+        if not w.get("allRoutes"):
+            expanded.append(w)
+            continue
+        for o, d, _ in all_routes():
+            expanded.append({**w, "route": f"{o}-{d}"})
+            expanded.append({**w, "route": f"{d}-{o}"})
+    watches = expanded
+
     tax = load_tax()
     try:
-        state = json.load(open(STATE))
+        state = json.load(open(a.state))
     except Exception:
         state = {}
 
@@ -114,12 +142,28 @@ def main():
             k = f"{w['route']}|{r['date']}"
             prev = state.get(k, {}).get("low")
             total = r["amount"] + t if t is not None else None
-            thr = w.get("threshold")
-            # 稅金表還沒建好時退回用未稅價比門檻，寧可多吵一次也不要靜默失效
-            cmp_price = total if total is not None else r["amount"]
-            cheap = thr is not None and cmp_price <= thr
-            newlow = prev is not None and r["amount"] < prev
-            if (cheap or newlow) and prev != r["amount"]:
+            # 只有「這個 (航線,日期) 比我們記過的還便宜」才值得吵。少了這個條件，
+            # 一個一直低於門檻的日期會在價格往上跳的時候也發通知（原 1,999 → 現 2,399
+            # 照樣推「門檻」），看起來像降價其實是漲價。
+            improved = prev is None or r["amount"] < prev
+
+            # threshold 比的是含稅總價；thresholdNet 直接比官網的未稅價
+            # （促銷文案講的「112 元起」「512 元起」都是未稅數字，用這個才對得上）
+            thr, thr_net = w.get("threshold"), w.get("thresholdNet")
+            cheap = thr_net is not None and r["amount"] <= thr_net
+            if not cheap and thr is not None:
+                # 稅金表還沒建好時退回用未稅價比門檻，寧可多吵一次也不要靜默失效
+                cheap = (total if total is not None else r["amount"]) <= thr
+            cheap = cheap and improved
+
+            # 創新低這條規則會對任何跌幅開火。全網掃描用 noNewLow 整個關掉；
+            # 一般需求用 newLowMax 設一個「還在射程內才通知」的未稅價上限，
+            # 免得春節那種兩萬起跳的線每降一千就吵一次。
+            new_max = w.get("newLowMax")
+            newlow = (not w.get("noNewLow")) and improved and prev is not None \
+                and (new_max is None or r["amount"] <= new_max)
+
+            if cheap or newlow:
                 hits.append({"w": w, "date": r["date"], "amount": r["amount"],
                              "total": total, "tax": t, "prev": prev,
                              "why": "門檻" if cheap else "新低"})
@@ -127,7 +171,7 @@ def main():
                 state[k] = {"low": r["amount"], "ts": int(time.time())}
         time.sleep(0.3)
 
-    json.dump(state, open(STATE, "w"), indent=0)
+    json.dump(state, open(a.state, "w"), indent=0)
 
     if errors:
         print("錯誤：" + "; ".join(errors))

@@ -7,8 +7,10 @@
 //
 // 輸出 JSON 到 stdout；--out <file> 可另存。camofox 不在就直接失敗（非靜默）。
 const BASE = 'http://localhost:9377';
-// camofox session 名帶 PID：兩個查詢同時跑時不會互相 DELETE 掉對方的 session
-const USER = process.env.TIGERAIR_CF_USER || `tigerair-${process.pid}`;
+// camofox session 名要固定：profile 是持久的，帶著瀏覽紀錄與 cookie 的 profile
+// 在 reCAPTCHA v3 拿到的分數比每次全新的乾淨 profile 高。但同時跑的兩支程式不能共用
+// 同一個名字（收尾會 DELETE 掉對方的 session），所以用途不同就給不同的固定名字。
+const USER = process.env.TIGERAIR_CF_USER || 'tigerair';
 const SITEKEY = '6LeAFC4hAAAAANDlMutLdP9CLqWaUKYxEUMPb5L2';
 
 async function cf(method, p, body) {

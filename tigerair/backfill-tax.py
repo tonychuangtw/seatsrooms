@@ -16,6 +16,8 @@ TABLE = os.path.join(HERE, "tax-table.json")
 BASELINE = os.path.join(HERE, "baseline.json")
 FALLBACK_BASELINE = os.path.join(HERE, "baseline-20260830.json")
 TMP = os.path.join(HERE, ".backfill-last.json")
+STATE = os.path.join(HERE, ".backfill-state.json")
+MAX_BACKOFF_MIN = 240
 
 
 def load_table():
@@ -34,11 +36,37 @@ def sample_dates():
     return {k: sorted(v)[len(v) // 2] for k, v in by.items()}
 
 
+def load_state():
+    try:
+        return json.load(open(STATE))
+    except Exception:
+        return {"fails": 0, "nextTry": None}
+
+
+def save_state(st):
+    json.dump(st, open(STATE, "w"), indent=0)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=2, help="這輪最多量幾條")
     ap.add_argument("--stale", type=int, default=0, help="超過幾天沒量就重量（0=不重量）")
+    ap.add_argument("--now", action="store_true", help="忽略退避時間,立刻試一輪")
     a = ap.parse_args()
+
+    # 失敗就退避：reCAPTCHA 被判低分之後繼續猛打只會讓分數更難回來，
+    # 每失敗一次把下次嘗試往後推一倍（30 分 → 1 小時 → 2 小時，上限 4 小時）。
+    st = load_state()
+    now = datetime.datetime.now()
+    if not a.now and st.get("nextTry"):
+        try:
+            nxt = datetime.datetime.fromisoformat(st["nextTry"])
+            if now < nxt:
+                print(f"退避中（連續失敗 {st.get('fails', 0)} 次），"
+                      f"{nxt.strftime('%m-%d %H:%M')} 之後再試")
+                return
+        except ValueError:
+            pass
 
     table = load_table()
     dates = sample_dates()
@@ -64,7 +92,8 @@ def main():
         subprocess.run(["node", os.path.join(HERE, "fare-detail.js"), *args,
                         "--delay", "25", "--out", TMP],
                        cwd=HERE, timeout=120 + 90 * len(batch), check=True,
-                       capture_output=True)
+                       capture_output=True,
+                       env={**os.environ, "TIGERAIR_CF_USER": "tigerair-tax"})
     except subprocess.TimeoutExpired:
         print("fare-detail 逾時，這輪放棄")
     except subprocess.CalledProcessError as e:
@@ -101,6 +130,15 @@ def main():
     print(f"寫入 {len(table['routes'])}/{len(dates)} 條。"
           f"新增 {', '.join(added) if added else '無'}；"
           f"失敗 {', '.join(failed) if failed else '無'}")
+
+    if added:
+        save_state({"fails": 0, "nextTry": None})
+    else:
+        fails = st.get("fails", 0) + 1
+        wait = min(MAX_BACKOFF_MIN, 30 * (2 ** (fails - 1)))
+        nxt = now + datetime.timedelta(minutes=wait)
+        save_state({"fails": fails, "nextTry": nxt.isoformat(timespec="seconds")})
+        print(f"整輪都失敗（第 {fails} 次），退避 {wait} 分鐘到 {nxt.strftime('%m-%d %H:%M')}")
 
 
 if __name__ == "__main__":
