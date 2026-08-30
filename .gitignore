@@ -20,3 +20,9 @@ tigerair/__pycache__/
 tigerair/.watch-state-promo.json
 tigerair/.backfill-state.json
 tigerair/.verify-stamp
+starlux/baseline*.json
+starlux/network.json
+starlux/scan-out.txt
+starlux/scan-err.txt
+starlux/watch-state.json
+__pycache__/

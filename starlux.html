@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🐯 虎航價格日曆</title>
+<title>✨ 星宇價格日曆</title>
 <meta name="theme-color" content="#0d0d10">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
 <link rel="stylesheet" href="assets/shared.css?v=20260815">
 <style>
-  /* 航線挑選 */
   .pickrow{ display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-top:1px solid var(--border); }
   .pickrow:first-child{ border-top:0; }
   .picklab{ flex:0 0 58px; font-size:0.75rem; color:var(--dim); padding-top:6px; }
@@ -22,14 +21,12 @@
   .chip[aria-pressed="true"] .cd{ color:#0d0d10; opacity:.7; }
   .chip:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 
-  /* 摘要 */
   .stats{ display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 0; }
   .st{ flex:1 1 118px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:8px 11px; }
   .st .l{ font-size:0.74rem; color:var(--dim); }
   .st .v{ font-size:1.15rem; font-weight:700; font-variant-numeric:tabular-nums; }
   .st.good .v{ color:var(--ok); }
 
-  /* 月曆 */
   .cals{ display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:12px; }
   .cal{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:11px; }
   .cal h3{ font-size:0.9rem; margin:0 0 8px; display:flex; justify-content:space-between; align-items:baseline; }
@@ -41,8 +38,7 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
   .cell.blank{ background:transparent; }
   .cell .d{ font-size:0.62rem; color:var(--dim); line-height:1; }
-  .cell .p{ font-size:0.72rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.05; }
-  .cell .p small{ display:block; font-size:0.58rem; font-weight:400; color:var(--dim); }
+  .cell .p{ font-size:0.7rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.05; }
   .cell.q1{ background:var(--okbg); } .cell.q1 .p{ color:var(--ok); }
   .cell.q3 .p{ color:var(--warn); }
   .cell.nil .p{ color:var(--dim); font-weight:400; }
@@ -60,12 +56,12 @@
 </style>
 </head>
 <body>
-<h1>🐯 虎航價格日曆</h1>
-<p class="sub">台灣虎航全航線每日最低價 · 官網價是「單人未稅單程」,這裡同時給含稅總價</p>
+<h1>✨ 星宇價格日曆</h1>
+<p class="sub">星宇自營航線每日最低價 · 官網日曆給的就是含稅總價,不用另外加稅</p>
 <div class="nav">
   <a href="index.html">✈️ 機位主頁</a>
+  <a href="tigerair.html">🐯 虎航票價</a>
   <a href="hotels.html">🏨 飯店房況</a>
-  <a href="starlux.html">✨ 星宇票價</a>
   <a href="rules.html">📖 規則庫</a>
 </div>
 
@@ -93,7 +89,7 @@
   <div class="card">
     <h2>這條航線最便宜的 20 天</h2>
     <div class="scroll"><table id="best">
-      <thead><tr><th class="l">日期</th><th class="l">週</th><th>未稅</th><th>＋稅</th><th>含稅總價</th></tr></thead>
+      <thead><tr><th class="l">日期</th><th class="l">週</th><th>含稅總價</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </div>
@@ -101,13 +97,12 @@
   <div class="card">
     <h2>全航線最低價</h2>
     <div class="scroll"><table id="all">
-      <thead><tr><th class="l">航線</th><th>未稅</th><th>＋稅</th><th>含稅總價</th><th class="l">最便宜那天</th></tr></thead>
+      <thead><tr><th class="l">航線</th><th>含稅總價</th><th class="l">最便宜那天</th></tr></thead>
       <tbody></tbody>
     </table></div>
     <p class="msg" style="margin-top:10px">
-      稅金是每個航向固定一個數字(跟日期無關),由訂位引擎實際報價量出來;標「未量」的還在排隊量測。
-      台灣出發的機場服務費 2026-09-01 起 500→750 元,調整後會重量。
-      海外出發以當地幣別定價換算台幣,會隨匯率浮動。
+      經濟艙(eco)、單人、單程、含稅。行李與選位另計。
+      可訂期間約未來 12 個月,超出的月份官網會直接擋掉。
     </p>
   </div>
 </div>
@@ -116,29 +111,26 @@
 <script>
 (function(){
   "use strict";
-  var CITY={TPE:"台北桃園",RMQ:"台中",KHH:"高雄",TNN:"台南",NRT:"東京成田",HND:"東京羽田",
-    KIX:"大阪關西",NGO:"名古屋",CTS:"札幌新千歲",HKD:"函館",OKA:"沖繩那霸",ISG:"石垣島",
-    FUK:"福岡",KMJ:"熊本",KMI:"宮崎",OIT:"大分",HSG:"佐賀",OKJ:"岡山",YGJ:"米子",KCZ:"高知",
-    KMQ:"小松",SDJ:"仙台",AXT:"秋田",HNA:"花卷",FKS:"福島",KIJ:"新潟",ICN:"首爾仁川",
-    GMP:"首爾金浦",PUS:"釜山",CJU:"濟州",HKT:"普吉",DAD:"峴港"};
-  var CN={ICN:"韓國",GMP:"韓國",PUS:"韓國",CJU:"韓國",HKT:"泰國",DAD:"越南"};
-  var TW=["TPE","RMQ","KHH","TNN"], WD=["日","一","二","三","四","五","六"];
-  var R={}, span={from:null,to:null};
-  var st={origin:"KHH",dest:"CJU",dir:"out"};
+  var WD=["日","一","二","三","四","五","六"];
+  var R={}, NAMES={}, span={from:null,to:null};
+  var st={origin:null,dest:null,dir:"out"};
 
-  function city(c){ return CITY[c]||c; }
-  function nation(c){ return CN[c]||"日本"; }
+  function city(c){ return NAMES[c]||c; }
   function fmt(n){ return Number(n).toLocaleString("en-US"); }
   function key(){ return st.dir==="out" ? st.origin+"-"+st.dest : st.dest+"-"+st.origin; }
-  function dests(o){ var s=[]; Object.keys(R).forEach(function(k){
-    var p=k.split("-"); if(p[0]===o && s.indexOf(p[1])<0) s.push(p[1]); }); return s; }
+  function origins(){ var s=[]; Object.keys(R).forEach(function(k){ var o=k.split("-")[0];
+    if(s.indexOf(o)<0) s.push(o); }); return s; }
+  function dests(o){ var s=[]; Object.keys(R).forEach(function(k){ var p=k.split("-");
+    if(p[0]===o && s.indexOf(p[1])<0) s.push(p[1]); }); return s; }
 
   function buildPicker(){
     var box=$("picker"); box.innerHTML="";
+    // 出發地：星宇只有台灣三個基地會有一長串目的地,其餘是回程起點,依目的地數量排序
+    var os=origins().sort(function(a,b){ return dests(b).length-dests(a).length; });
     var row=document.createElement("div"); row.className="pickrow";
-    row.innerHTML='<div class="picklab">台灣</div>';
+    row.innerHTML='<div class="picklab">出發</div>';
     var chips=document.createElement("div"); chips.className="chips";
-    TW.filter(function(o){ return dests(o).length; }).forEach(function(o){
+    os.forEach(function(o){
       var b=document.createElement("button"); b.className="chip"; b.type="button";
       b.setAttribute("aria-pressed", o===st.origin);
       b.innerHTML=esc(city(o))+'<span class="cd">'+esc(o)+"</span>";
@@ -148,22 +140,17 @@
     });
     row.appendChild(chips); box.appendChild(row);
 
-    var byN={};
-    dests(st.origin).forEach(function(d){ (byN[nation(d)]=byN[nation(d)]||[]).push(d); });
-    ["日本","韓國","泰國","越南"].forEach(function(n){
-      if(!byN[n]) return;
-      var r2=document.createElement("div"); r2.className="pickrow";
-      r2.innerHTML='<div class="picklab">'+n+"</div>";
-      var c2=document.createElement("div"); c2.className="chips";
-      byN[n].forEach(function(d){
-        var b=document.createElement("button"); b.className="chip"; b.type="button";
-        b.setAttribute("aria-pressed", d===st.dest);
-        b.innerHTML=esc(city(d))+'<span class="cd">'+esc(d)+"</span>";
-        b.onclick=function(){ st.dest=d; render(); };
-        c2.appendChild(b);
-      });
-      r2.appendChild(c2); box.appendChild(r2);
+    var r2=document.createElement("div"); r2.className="pickrow";
+    r2.innerHTML='<div class="picklab">抵達</div>';
+    var c2=document.createElement("div"); c2.className="chips";
+    dests(st.origin).sort().forEach(function(d){
+      var b=document.createElement("button"); b.className="chip"; b.type="button";
+      b.setAttribute("aria-pressed", d===st.dest);
+      b.innerHTML=esc(city(d))+'<span class="cd">'+esc(d)+"</span>";
+      b.onclick=function(){ st.dest=d; render(); };
+      c2.appendChild(b);
     });
+    r2.appendChild(c2); box.appendChild(r2);
   }
 
   function months(){
@@ -179,25 +166,22 @@
     buildPicker();
     $("b-out").setAttribute("aria-pressed", st.dir==="out");
     $("b-ret").setAttribute("aria-pressed", st.dir==="ret");
-
-    var v=R[key()];
-    if(!v){
-      $("stats").innerHTML='<div class="st"><div class="l">這個方向</div><div class="v">—</div></div>';
-      $("cals").innerHTML="";
-      document.querySelector("#best tbody").innerHTML="";
-      return;
+    var days=R[key()];
+    var tb=document.querySelector("#best tbody");
+    if(!days){
+      $("stats").innerHTML='<div class="st"><div class="l">這個方向</div><div class="v">—</div>'+
+        '<div class="l">星宇沒有這個方向的航班</div></div>';
+      $("cals").innerHTML=""; tb.innerHTML=""; return;
     }
-    var days=v.days, tax=v.tax;
     var ps=Object.keys(days).map(function(d){return days[d];}).sort(function(a,b){return a-b;});
     var lo=ps[0], hi=ps[ps.length-1];
     var q1=ps[Math.floor(ps.length/3)], q2=ps[Math.floor(ps.length*2/3)];
     var med=ps[Math.floor(ps.length/2)];
-    var T=function(n){ return tax==null?null:n+tax; };
 
     $("stats").innerHTML=[
-      ["最低價", fmt(T(lo)||lo), tax==null?"未稅(稅金未量)":"含稅 · 票價 "+fmt(lo)+"＋稅 "+fmt(tax), true],
-      ["中位數", fmt(T(med)||med), "一半的日子比這便宜", false],
-      ["最高價", fmt(T(hi)||hi), "整段期間最貴", false],
+      ["最低價", fmt(lo), "含稅單程", true],
+      ["中位數", fmt(med), "一半的日子比這便宜", false],
+      ["最高價", fmt(hi), "整段期間最貴", false],
       ["有票天數", Object.keys(days).length, span.from+" → "+span.to, false]
     ].map(function(s){
       return '<div class="st'+(s[3]?" good":"")+'"><div class="l">'+esc(s[0])+
@@ -221,55 +205,54 @@
         } else {
           var cls = pr<=q1?"q1":(pr>=q2?"q3":"q2");
           var lowMark = (pr===mLo && pr<=q1) ? " low" : "";
-          var tot=T(pr);
-          cells+='<div class="cell '+cls+lowMark+'"><div class="d">'+d+'</div><div class="p">'+
-            fmt(tot==null?pr:tot)+"<small>"+(tot==null?"未稅":fmt(pr))+"</small></div></div>";
+          cells+='<div class="cell '+cls+lowMark+'"><div class="d">'+d+'</div><div class="p">'+fmt(pr)+"</div></div>";
         }
       }
       return '<div class="cal"><h3>'+y+"年"+m+"月<em>"+
-        (mLo===null?"無班機":"最低 "+fmt(T(mLo)||mLo))+"</em></h3>"+
+        (mLo===null?"無班機":"最低 "+fmt(mLo))+"</em></h3>"+
         '<div class="cg">'+cells+"</div></div>";
     }).join("");
 
-    document.querySelector("#best tbody").innerHTML=Object.keys(days)
-      .sort(function(a,b){ return days[a]-days[b]; }).slice(0,20).map(function(d){
+    tb.innerHTML=Object.keys(days).sort(function(a,b){ return days[a]-days[b]; })
+      .slice(0,20).map(function(d){
         var wd=new Date(d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
-        var pr=days[d];
         return '<tr><td class="l n">'+esc(d)+'</td><td class="l'+we+'">'+WD[wd]+"</td>"+
-          '<td class="n">'+fmt(pr)+'</td><td class="n">'+(tax==null?"未量":fmt(tax))+"</td>"+
-          '<td class="n tot">'+(tax==null?"—":fmt(pr+tax))+"</td></tr>";
+          '<td class="n tot">'+fmt(days[d])+"</td></tr>";
       }).join("");
   }
 
   function renderAll(){
     var rows=Object.keys(R).map(function(k){
-      var v=R[k], best=null;
-      Object.keys(v.days).forEach(function(d){ if(!best||v.days[d]<best[1]) best=[d,v.days[d]]; });
-      return {k:k,v:v,date:best[0],p:best[1],tot:v.tax==null?null:best[1]+v.tax};
-    }).sort(function(a,b){ return (a.tot==null?a.p:a.tot)-(b.tot==null?b.p:b.tot); });
+      var days=R[k], best=null;
+      Object.keys(days).forEach(function(d){ if(!best||days[d]<best[1]) best=[d,days[d]]; });
+      return {k:k,date:best[0],p:best[1]};
+    }).sort(function(a,b){ return a.p-b.p; });
     document.querySelector("#all tbody").innerHTML=rows.map(function(r){
       var pp=r.k.split("-");
       return '<tr><td class="l"><b>'+esc(r.k)+'</b><span class="rtname">'+
         esc(city(pp[0]))+" → "+esc(city(pp[1]))+"</span></td>"+
-        '<td class="n">'+fmt(r.p)+'</td><td class="n">'+(r.v.tax==null?"未量":fmt(r.v.tax))+"</td>"+
-        '<td class="n tot">'+(r.tot==null?"—":fmt(r.tot))+"</td>"+
-        '<td class="l n">'+esc(r.date)+"</td></tr>";
+        '<td class="n tot">'+fmt(r.p)+"</td><td class=\"l n\">"+esc(r.date)+"</td></tr>";
     }).join("");
   }
 
   function load(){
-    api("GET","/api/tigerair/prices",null,function(e,d){
+    api("GET","/api/starlux/prices",null,function(e,d){
       if(e){ toast("讀取失敗："+e,"err"); return; }
-      R={};
+      NAMES=d.names||{}; R={};
       (d.fares||[]).forEach(function(f){
         var k=f.origin+"-"+f.destination;
-        if(!R[k]) R[k]={days:{},tax:(d.tax&&d.tax[k]?d.tax[k].tax:null)};
-        R[k].days[f.date]=f.amount;
+        if(!R[k]) R[k]={};
+        R[k][f.date]=f.amount;
       });
       var all=[];
-      Object.keys(R).forEach(function(k){ all=all.concat(Object.keys(R[k].days)); });
+      Object.keys(R).forEach(function(k){ all=all.concat(Object.keys(R[k])); });
+      if(!all.length){ toast("還沒有掃描資料","err"); return; }
       all.sort(); span.from=all[0]; span.to=all[all.length-1];
-      if(!R[key()]){ var first=Object.keys(R)[0]; if(first){ var p=first.split("-"); st.origin=p[0]; st.dest=p[1]; } }
+      if(!R[key()]){
+        var first=Object.keys(R).sort(function(a,b){
+          return Object.keys(R[b]).length-Object.keys(R[a]).length; })[0];
+        var p=first.split("-"); st.origin=p[0]; st.dest=p[1];
+      }
       renderAll(); render();
     });
   }
