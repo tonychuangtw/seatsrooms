@@ -16,6 +16,7 @@ API = "https://ecapi.starlux-airlines.com"
 CAL = f"{API}/searchFlight/v2/flights/calendars/monthly"
 AIRPORTS = f"{API}/utilities/v2/airports"
 NET_CACHE = os.path.join(HERE, "network.json")
+FX_FILE = os.path.join(HERE, os.pardir, "cash-fx.json")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 HDR = {"User-Agent": UA, "Content-Type": "application/json",
@@ -23,6 +24,20 @@ HDR = {"User-Agent": UA, "Content-Type": "application/json",
        "Origin": "https://www.starlux-airlines.com",
        "Referer": "https://www.starlux-airlines.com/"}
 CABINS = ("eco", "ecoPremium", "business", "first")
+
+def fx_rates():
+    """台幣匯率表（seatsrooms 既有的 cash-fx.json，twdPer[幣別] = 1 單位換多少台幣）。
+
+    ⚠ 星宇的報價幣別是**由出發地決定的**，改 payload 或 header 都無法指定：
+    台灣出發回 TWD，澳門出發回 MOP，日本出發回 JPY……。把它們當成同一個幣別排序
+    會得到完全錯誤的結論（例：MFM→TPE 913 MOP 其實是 3,578 台幣，不是 913 台幣）。
+    """
+    try:
+        with open(FX_FILE) as f:
+            return json.load(f)["twdPer"]
+    except Exception:
+        return {"TWD": 1}
+
 
 class OutOfHorizon(Exception):
     """超出可訂期間（API 回 422）。"""
@@ -101,6 +116,17 @@ def months(since, until):
     return out
 
 
+_FX = None
+
+
+def to_twd(amount, currency):
+    global _FX
+    if _FX is None:
+        _FX = fx_rates()
+    rate = _FX.get(currency)
+    return round(amount * rate) if rate else None
+
+
 def month_prices(origin, dest, ym, cabin="eco", adt=1):
     """一次請求拿一整個日曆月。departureDate 給哪天不重要，回的是那個月。"""
     payload = {"cabin": cabin,
@@ -117,9 +143,10 @@ def month_prices(origin, dest, ym, cabin="eco", adt=1):
     for c in d["data"]["calendars"] or []:
         p = c.get("price") or {}
         if p.get("amount"):
+            cur = p.get("currencyCode", "TWD")
             out.append({"origin": origin, "destination": dest,
                         "date": c["departureDate"], "amount": p["amount"],
-                        "currency": p.get("currencyCode", "TWD"),
+                        "currency": cur, "twd": to_twd(p["amount"], cur),
                         "status": c.get("status")})
     return out
 
@@ -160,23 +187,26 @@ def main():
         if i % 10 == 0:
             print(f"  …{i}/{len(pairs)}", file=sys.stderr)
 
-    rows.sort(key=lambda r: r["amount"])
+    rows.sort(key=lambda r: r["twd"] or r["amount"])
     print(f"# 有價日期 {len(rows)} 筆（{a.since} ~ {a.until}）"
           + (f"／失敗 {len(errors)} 次" if errors else "") + "\n")
-    print(f"{'排名':<4}{'航線':<10}{'日期':<12}{'含稅 TWD':>10}  ")
+    print(f"{'排名':<4}{'航線':<10}{'日期':<12}{'含稅 TWD':>10}  原幣")
     for i, r in enumerate(rows[:a.top], 1):
-        print(f"{i:<4}{r['origin']}-{r['destination']:<6}{r['date']:<12}{r['amount']:>10,}")
+        orig = "" if r["currency"] == "TWD" else f"  {r['amount']:,} {r['currency']}"
+        print(f"{i:<4}{r['origin']}-{r['destination']:<6}{r['date']:<12}"
+              f"{(r['twd'] or 0):>10,}{orig}")
 
     best = {}
     for r in rows:
         k = f"{r['origin']}-{r['destination']}"
-        if k not in best or r["amount"] < best[k]["amount"]:
+        if k not in best or (r["twd"] or r["amount"]) < (best[k]["twd"] or best[k]["amount"]):
             best[k] = r
     print(f"\n# 各航向最低含稅價（{len(best)} 條有票）")
-    for k, r in sorted(best.items(), key=lambda kv: kv[1]["amount"]):
+    for k, r in sorted(best.items(), key=lambda kv: kv[1]["twd"] or kv[1]["amount"]):
         o, d = k.split("-")
         label = f"{names.get(o, o)}→{names.get(d, d)}"
-        print(f"  {k:<9}{r['amount']:>8,}  {r['date']}  {label}")
+        orig = "" if r["currency"] == "TWD" else f"（{r['amount']:,} {r['currency']}）"
+        print(f"  {k:<9}{(r['twd'] or 0):>8,}  {r['date']}  {label}{orig}")
 
     if errors:
         print(f"\n# 失敗 {len(errors)} 次", file=sys.stderr)
