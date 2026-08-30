@@ -12,6 +12,10 @@ fares = json.load(open(sys.argv[1]))
 NET = json.load(open(sys.argv[2]))
 CITY = NET.get("names", {})
 out_path = sys.argv[3] if len(sys.argv) > 3 else "starlux-prices.html"
+try:
+    RT = json.load(open(sys.argv[4] if len(sys.argv) > 4 else "baseline-rt.json"))["routes"]
+except Exception:
+    RT = {}
 
 TW = ("TPE", "RMQ", "KHH", "TNN")
 
@@ -31,7 +35,9 @@ for k, days in routes.items():
 all_dates = sorted({dt for v in data.values() for dt in v["days"]})
 scanned = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 payload = json.dumps({"routes": data, "from": all_dates[0], "to": all_dates[-1],
-                      "scanned": scanned}, ensure_ascii=False, separators=(",", ":"))
+                      "scanned": scanned,
+                      "rt": {k: {"go": v["go"], "ret": v["ret"]} for k, v in RT.items()}},
+                     ensure_ascii=False, separators=(",", ":"))
 
 HTML = """<title>星宇價格日曆</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -234,10 +240,33 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="picker">
   <h2>選航線</h2>
   <div id="groups"></div>
-  <div class="dirtoggle">
+  <div class="dirtoggle" id="dirtoggle">
     <button class="chip" id="btn-out" aria-pressed="true">去程</button>
     <button class="chip" id="btn-ret" aria-pressed="false">回程</button>
   </div>
+  <div class="dirtoggle" id="modechips" style="flex-wrap:wrap;align-items:center">
+    <button class="chip" data-n="0" aria-pressed="true">單程</button>
+    <button class="chip" data-n="2">來回 3天2夜</button>
+    <button class="chip" data-n="3">來回 4天3夜</button>
+    <button class="chip" data-n="4">來回 5天4夜</button>
+    <button class="chip" data-n="5">來回 6天5夜</button>
+    <label class="chip" style="gap:6px">自訂 <input id="nights-in" type="number" min="1" max="60" value="7" style="width:54px;font:inherit;padding:1px 4px"> 晚</label>
+  </div>
+  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">來回總價 = 去程段 ＋ 回程段（已用官網全程總價驗證）。回程段依「最便宜去程艙等桶」估算：便宜的出發日算得準，貴的出發日可能略微樂觀幾百元；下訂前以官網為準。來回只掃台灣出發的航線。</p>
+</section>
+
+<section class="board" id="combo-card" style="display:none">
+  <h2>找最便宜的去回組合</h2>
+  <div class="chips" style="align-items:center;gap:10px">
+    <label>最少 <input id="c-min" type="number" min="1" max="60" value="2" style="width:54px;font:inherit"> 晚</label>
+    <label>最多 <input id="c-max" type="number" min="1" max="60" value="6" style="width:54px;font:inherit"> 晚</label>
+    <label>出發月 <input id="c-month" type="month" style="font:inherit"></label>
+    <button class="chip" id="c-go">找</button>
+  </div>
+  <div class="tblwrap" style="margin-top:12px"><table id="combo">
+    <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回總價</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
 </section>
 
 <div class="summary" id="summary"></div>
@@ -246,7 +275,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="board">
   <h2>這條航線最便宜的 20 天</h2>
   <div class="tblwrap"><table id="best">
-    <thead><tr><th class="l">日期</th><th class="l">星期</th><th>含稅總價</th></tr></thead>
+    <thead id="best-head"><tr><th class="l">日期</th><th class="l">星期</th><th>含稅總價</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>
@@ -278,7 +307,17 @@ const DATA = __PAYLOAD__;
 const R = DATA.routes;
 const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
-const state = { origin:'KHH', dest:'CJU', dir:'out' };
+const first = Object.keys(R).sort((a,b)=>Object.keys(R[b].days).length-Object.keys(R[a].days).length)[0].split('-');
+const state = { origin:first[0], dest:first[1], dir:'out', nights:0 };
+const RT = DATA.rt || {};
+const addDays = (iso,n) => { const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+function rtDays(k,n){ const v=RT[k]; if(!v) return null; const out={}; let any=false;
+  for(const d of Object.keys(v.go)){ const rd=addDays(d,n), r=v.ret[rd]; if(r){ out[d]={t:v.go[d]+r,g:v.go[d],r:r,rd:rd}; any=true; } }
+  return any?out:null; }
+function curDays(){ const k=key();
+  if(state.nights>0){ const m=rtDays(k,state.nights); if(!m) return null;
+    const days={}; for(const d of Object.keys(m)) days[d]=m[d].t; return {days, rt:m}; }
+  return R[k] ? {days:R[k].days, rt:null} : null; }
 
 function key(){ return state.dir==='out' ? state.origin+'-'+state.dest : state.dest+'-'+state.origin; }
 
@@ -338,15 +377,24 @@ function render(){
   document.getElementById('btn-out').setAttribute('aria-pressed', state.dir==='out');
   document.getElementById('btn-ret').setAttribute('aria-pressed', state.dir==='ret');
 
-  const k = key(), v = R[k];
+  const rt = state.nights>0;
+  if(rt) state.dir='out';
+  document.getElementById('dirtoggle').style.display = rt?'none':'';
+  document.getElementById('rtnote').style.display = rt?'':'none';
+  document.getElementById('combo-card').style.display = rt?'':'none';
+  document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.n===state.nights));
+  document.getElementById('best-head').innerHTML = rt
+    ? '<tr><th class="l">出發</th><th class="l">星期</th><th class="l">回程</th><th>去程</th><th>回程</th><th>來回總價</th></tr>'
+    : '<tr><th class="l">日期</th><th class="l">星期</th><th>含稅總價</th></tr>';
+  const k = key(), curD = curDays(), v = curD;
   const cals = document.getElementById('cals');
   const sum = document.getElementById('summary');
   const bestBody = document.querySelector('#best tbody');
   if(!v){
-    sum.innerHTML='<div class="stat"><div class="lab">這個方向</div><div class="val">—</div><div class="note">沒有掃到票價</div></div>';
+    sum.innerHTML='<div class="stat"><div class="lab">這個方向</div><div class="val">—</div><div class="note">'+(rt?'這條航線沒有來回資料':'沒有掃到票價')+'</div></div>';
     cals.innerHTML=''; bestBody.innerHTML=''; return;
   }
-  const days = v.days, tax = v.tax;
+  const days = v.days, tax = null;
   const prices = Object.values(days).sort((a,b)=>a-b);
   const lo = prices[0], hi = prices[prices.length-1];
   const q1 = prices[Math.floor(prices.length/3)], q2 = prices[Math.floor(prices.length*2/3)];
@@ -354,7 +402,7 @@ function render(){
   const T = n => tax==null ? null : n+tax;
 
   sum.innerHTML = [
-    ['最低價', lo, '含稅 · 單人單程', true],
+    ['最低價', lo, rt?('含稅來回 '+(state.nights+1)+'天'+state.nights+'夜'):'含稅 · 單人單程', true],
     ['中位數', (T(med)??med), '一半的日子比這便宜', false],
     ['最高價', (T(hi)??hi), '整段期間最貴的一天', false],
     ['有票天數', Object.keys(days).length, DATA.from+' → '+DATA.to, false],
@@ -401,15 +449,36 @@ function render(){
   bestBody.innerHTML = Object.entries(days).sort((a,b)=>a[1]-b[1]).slice(0,20).map(([d,p])=>{
     const wd = new Date(d+'T00:00:00Z').getUTCDay();
     const we = (wd===0||wd===6)?' we':'';
+    if(rt){ const x=curD.rt[d];
+      return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td><td class="l num">'+x.rd+'</td>'+
+        '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td><td class="num tot">'+fmt(x.t)+'</td></tr>'; }
     return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
       '<td class="num tot">'+fmt(p)+'</td></tr>';
   }).join('');
 }
 
+function findCombos(){
+  const v=RT[key()], body=document.querySelector('#combo tbody');
+  if(!v){ body.innerHTML='<tr><td colspan="6" class="l">這條航線沒有來回資料</td></tr>'; return; }
+  const mn=Math.max(1,+document.getElementById('c-min').value||1), mx=Math.max(mn,+document.getElementById('c-max').value||mn);
+  const ym=document.getElementById('c-month').value; const out=[];
+  for(const d of Object.keys(v.go)){ if(ym && !d.startsWith(ym)) continue;
+    for(let n=mn;n<=mx;n++){ const rd=addDays(d,n), r=v.ret[rd]; if(r) out.push({d,rd,n,g:v.go[d],r,t:v.go[d]+r}); } }
+  out.sort((a,b)=>a.t-b.t||a.d.localeCompare(b.d));
+  body.innerHTML = out.length ? out.slice(0,15).map(x=>{ const wd=new Date(x.d+'T00:00:00Z').getUTCDay();
+    return '<tr><td class="l num">'+x.d+'（'+WD[wd]+'）</td><td class="l num">'+x.rd+'</td><td class="num">'+x.n+'</td>'+
+      '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td><td class="num tot">'+fmt(x.t)+'</td></tr>'; }).join('')
+    : '<tr><td colspan="6" class="l">這個範圍沒有可組合的日期</td></tr>';
+}
+
 function buildAll(){
-  const rows = Object.entries(R).map(([k,v])=>{
+  const rt = state.nights>0;
+  const entries = rt
+    ? Object.keys(RT).map(k=>{ const m=rtDays(k,state.nights); if(!m||!R[k]) return null; const days={}; for(const d of Object.keys(m)) days[d]=m[d].t; return [k,{...R[k],days}]; }).filter(Boolean)
+    : Object.entries(R);
+  const rows = entries.map(([k,v])=>{
     const e = Object.entries(v.days).sort((a,b)=>a[1]-b[1])[0];
-    return {k, v, date:e[0], p:e[1], tot: v.tax==null? null : e[1]+v.tax};
+    return {k, v, date:e[0], p:e[1], tot: null};
   }).sort((a,b)=> (a.tot??a.p)-(b.tot??b.p));
   document.querySelector('#all tbody').innerHTML = rows.map(r=>
     '<tr><td class="l"><b>'+r.k+'</b><span class="rt-name">'+r.v.on+' → '+r.v.dn+'</span></td>'+
@@ -419,6 +488,9 @@ function buildAll(){
 
 document.getElementById('btn-out').onclick=()=>{ state.dir='out'; render(); };
 document.getElementById('btn-ret').onclick=()=>{ state.dir='ret'; render(); };
+document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>{ b.onclick=()=>{ state.nights=+b.dataset.n; buildAll(); render(); }; });
+document.getElementById('nights-in').onchange=function(){ const n=+this.value; if(n>0){ state.nights=n; buildAll(); render(); } };
+document.getElementById('c-go').onclick=findCombos;
 buildGroups(); buildAll(); render();
 </script>
 """

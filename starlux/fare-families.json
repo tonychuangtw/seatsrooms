@@ -31,5 +31,20 @@
   "Y3TWSEA",
   "Y2TWSEA",
   "Y1TWSEA"
+ ],
+ "TPE-CRK|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-CTS|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-DAD|eco": [
+  "Y2TWSEA",
+  "Y1TWSEA"
  ]
 }
