@@ -33,7 +33,7 @@ _last = [0.0]
 MIN_GAP = 0.4
 
 
-def call(url, payload=None, tries=5):
+def call(url, payload=None, tries=6):
     body = json.dumps(payload).encode() if payload is not None else None
     for i in range(tries):
         try:
@@ -50,7 +50,8 @@ def call(url, payload=None, tries=5):
             if e.code == 422:
                 raise OutOfHorizon()
             if e.code in (429, 502, 503) and i < tries - 1:
-                time.sleep(3 * (i + 1))
+                # 429 要退夠久才有用；掃描與監看同時跑的時候特別容易撞到
+                time.sleep(5 * (i + 1))
                 continue
             if i == tries - 1:
                 raise

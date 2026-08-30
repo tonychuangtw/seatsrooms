@@ -1,38 +1,43 @@
-# 星宇票價日曆 —— 探路中（2026-08-30）
+# 星宇票價日曆
 
-目標：做出跟 `../tigerair/` 一樣的全網現金票價格日曆。
+官網有一支公開的月票價日曆 API：不用登入、沒有 Akamai、curl 直接打得到，
+**一次請求 = 一條航線一整個日曆月**。
 
-## 已確認
-`POST https://ecapi.starlux-airlines.com/searchFlight/v2/flights/calendars/monthly`
-header 只要 `jx-lang: zh-TW`，不用登入、沒有 Akamai。
-
-payload 共 6 個必填（來源：`_nuxt/ed1a30d.js` 的 `mHandleShowMonthPicker`）：
-`{cabin, itineraries, travelers, goFareFamilyCode, promotion, corporateCode}`
-
-已對出來的 3 個：
-```json
-{"cabin":"eco",
- "itineraries":[{"departure":"TPE","arrival":"NRT","departureDate":"2026-10-15"}],
- "travelers":{"adult":1,"child":0,"infant":0}}
 ```
-→ 回 `validation.required (and 2 more errors)`（剩 3 個沒對出來）
+POST https://ecapi.starlux-airlines.com/searchFlight/v2/flights/calendars/monthly
+header: Content-Type: application/json, jx-lang: zh-TW
+body:   {"cabin":"eco",
+         "itineraries":[{"departure":"TPE","arrival":"NRT","departureDate":"2026-10-15"}],
+         "travelers":{"adt":1,"chd":0,"inf":0}}
+```
 
-**爬山訊號**：錯誤訊息裡的數字就是還缺幾個欄位。`{}` 是 6 個，每滿足一個少一個。
+兩個卡最久的欄位名（正解在 `_nuxt/ed1a30d.js` 的 `getTravelersAndCabin`）：
+- `travelers` 是 **adt / chd / inf**，不是 adult/child/infant
+- `itineraries` 是 **departure / arrival**，不是 origin/destination
 
-## 這三支腳本
-- `jxcapture.js` 全程用 camofox 真實 click（snapshot ref）——選單打得開，但這狀態下 `[role=option]` 抓不到
-- `jxgo5.js` 全程用頁面內 JS `.click()`——選得到 TPE，但 modal 關不掉、區域手風琴不展開
-- `jxhybrid.js` 兩者混用——同上
+其他重點：
+- cabin 只吃 `eco` / `ecoPremium` / `business` / `first`
+- 必填只有 cabin / itineraries / travelers 三個，其餘選填
+- **回的價格就是含稅總價**（TPE-NRT 日曆 8,574 ＝ 票價 6,170 ＋ 稅 2,404，
+  跟 `/flights/search` 對得上），所以這條線不需要稅金表
+- `amount` 隨旅客人數放大，要單人價就 `adt: 1`
+- 可訂期間約未來 12 個月，超出回 HTTP 422（scan.py 當空月份處理）
+- 航線圖：`GET .../utilities/v2/airports`，取 `isOperatedByJX` 的機場與
+  `available[].carrierCode == "JX"` 的 waypoint → 37 個出發機場 / 94 個航向
 
-## 兩個踩過的誤判（別再踩）
-1. `/請選擇出發地/.test(document.body.innerText)` **不能**拿來判斷選單開了沒——
-   那是按鈕自己的標籤，頁面一載入就是 true
-2. camofox 的真實 click（`POST /tabs/:id/click`）在這個站沒作用（點完 DOM 完全沒變）；
-   要用頁面內 JS `.click()`
+## 用法
+```bash
+python3 scan.py --routes TPE-NRT,TPE-CTS --since 2026-09 --until 2027-03
+python3 scan.py --all --since 2026-09 --until 2027-08 --json baseline.json   # 約 20 分鐘
+python3 watch.py --init      # 建立基準
+python3 watch.py             # 跌破門檻／創新低就推 TG
+python3 generate-page.py baseline.json network.json out.html
+```
 
-## 目前唯一卡住的點
-目的地面板的區域手風琴（臺灣／港澳／東北亞／…）點不開，`aria-expanded` 一直是 false。
-NRT 其實已經在 innerHTML 裡，內容有 render 只是收合著。
-建議改到 scout（192.168.1.158）跑——星宇的 UI 自動化在那台早就打通過。
+## 死路存證（別再走一次）
+- deeplink 猜 query 參數（`/booking/search-result?from=..&to=..`）不會觸發搜尋
+- camofox 的真實 click 在 starlux.com 沒作用（點完 DOM 完全沒變）
+- 頁面內 JS `.click()` 開得了機場選單、選得到出發地，但目的地的區域手風琴不展開
+- `/請選擇出發地/.test(document.body.innerText)` 不能當「選單開了沒」的判斷 —— 那是按鈕自己的標籤
 
-下一步詳見 `../PROGRESS.md`（本機檔案，不在 repo）。
+最後是直接讀前端 bundle 看出欄位名，不是靠錄封包。`jx*.js` 那幾支探路腳本留著當紀錄。
