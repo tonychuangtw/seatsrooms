@@ -24,4 +24,15 @@ payload 共 6 個必填（來源：`_nuxt/ed1a30d.js` 的 `mHandleShowMonthPicke
 - `jxgo5.js` 全程用頁面內 JS `.click()`——選得到 TPE，但 modal 關不掉、區域手風琴不展開
 - `jxhybrid.js` 兩者混用——同上
 
+## 兩個踩過的誤判（別再踩）
+1. `/請選擇出發地/.test(document.body.innerText)` **不能**拿來判斷選單開了沒——
+   那是按鈕自己的標籤，頁面一載入就是 true
+2. camofox 的真實 click（`POST /tabs/:id/click`）在這個站沒作用（點完 DOM 完全沒變）；
+   要用頁面內 JS `.click()`
+
+## 目前唯一卡住的點
+目的地面板的區域手風琴（臺灣／港澳／東北亞／…）點不開，`aria-expanded` 一直是 false。
+NRT 其實已經在 innerHTML 裡，內容有 render 只是收合著。
+建議改到 scout（192.168.1.158）跑——星宇的 UI 自動化在那台早就打通過。
+
 下一步詳見 `../PROGRESS.md`（本機檔案，不在 repo）。
