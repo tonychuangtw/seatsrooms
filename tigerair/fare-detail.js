@@ -62,6 +62,17 @@ const IN_PAGE = args => `(async () => {
     });
     await new Promise(r => setTimeout(r, 2500));
   }
+  // reCAPTCHA v3 是行為評分制。一載入就馬上 execute、頁面完全沒有互動痕跡的話分數會偏低，
+  // 連續打更會直接掉到 verify failed。先捲一下、動一下滑鼠、停留幾秒再要 token。
+  for (let s = 0; s < 3; s++) {
+    window.scrollBy(0, 120 + s * 90);
+    document.dispatchEvent(new MouseEvent('mousemove', {
+      clientX: 220 + s * 130, clientY: 180 + s * 70, bubbles: true,
+    }));
+    await new Promise(r => setTimeout(r, 900 + s * 400));
+  }
+  await new Promise(r => setTimeout(r, 2500));
+
   let rc2 = await new Promise((res, rej) => {
     grecaptcha.ready(() => grecaptcha.execute(sitekey, { action: 'submit' }).then(res, e => rej(new Error(String(e)))));
   });
