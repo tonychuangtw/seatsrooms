@@ -26,3 +26,6 @@ starlux/scan-out.txt
 starlux/scan-err.txt
 starlux/watch-state.json
 __pycache__/
+starlux/ao.json
+starlux/mfm.json
+starlux/rt*.json
