@@ -1,1 +1,17 @@
 # 來回：47 個航向 × (12 去程月 + 13 回程月 + 1 次代碼查詢) ≈ 1222 次請求
+  …10/47
+  …20/47
+  …30/47
+  …40/47
+
+# 失敗 13 次
+  TPE-DPS: 找不到 eco 艙等家族代碼
+  TPE-PHX ret 2026-09: Invalid data.
+  TPE-PHX ret 2026-10: Invalid data.
+  TPE-PHX ret 2026-11: Invalid data.
+  TPE-PHX ret 2026-12: Invalid data.
+  TPE-PRG ret 2026-09: Invalid data.
+  TPE-PRG ret 2026-10: Invalid data.
+  TPE-SEA ret 2027-08: Failed to connect to 35f10474c62a4fe0798b56a803b2a6a9444d0289632397f27b7c05d0362
+  RMQ-CTS: 找不到 eco 艙等家族代碼
+  RMQ-DAD: 找不到 eco 艙等家族代碼

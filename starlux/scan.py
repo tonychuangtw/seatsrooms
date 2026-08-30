@@ -169,7 +169,7 @@ def load_ff():
         return {}
 
 
-def fare_families(origin, dest, ym, cabin="eco", cache=None):
+def fare_families(origin, dest, ym, cabin="eco", cache=None, months_to_try=None):
     """這條航線該艙等的家族代碼，**由便宜到貴**排（Y4, Y3, Y2, Y1）。一條航線查一次，存檔。
 
     代碼格式是「艙等字母＋桶號＋市場」（例 Y3TWNEA），桶號越大越便宜。
@@ -179,8 +179,10 @@ def fare_families(origin, dest, ym, cabin="eco", cache=None):
     if key in cache:
         return cache[key]
     prefix = {"eco": "Y", "ecoPremium": "W", "business": "J", "first": "F"}[cabin]
-    for day in (15, 18, 21, 10, 25, 5):
-        go = f"{ym}-{day:02d}"
+    # 季節性航線（例：台中—札幌只飛冬季）第一個月可能沒班，往後幾個月找
+    tries = [(m, day) for m in (months_to_try or [ym])[:6] for day in (15, 22, 8)]
+    for m_, day in tries:
+        go = f"{m_}-{day:02d}"
         ret = (datetime.date.fromisoformat(go) + datetime.timedelta(days=4)).isoformat()
         payload = {"cabin": cabin,
                    "itineraries": [{"departure": origin, "arrival": dest, "departureDate": go},
@@ -338,7 +340,7 @@ def main_rt(a, pairs, ms, names):
     ff_cache = load_ff()
     data, errors = {}, []
     for i, (o, d) in enumerate(pairs, 1):
-        fams = fare_families(o, d, ms[0], a.cabin, ff_cache)
+        fams = fare_families(o, d, ms[0], a.cabin, ff_cache, months_to_try=ms)
         if not fams:
             errors.append(f"{o}-{d}: 找不到 {a.cabin} 艙等家族代碼")
             continue

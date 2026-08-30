@@ -46,5 +46,171 @@
  "TPE-DAD|eco": [
   "Y2TWSEA",
   "Y1TWSEA"
+ ],
+ "TPE-FUK|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-HAN|eco": [
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-HKD|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-HKG|eco": [
+  "Y4TWHM",
+  "Y3TWHM",
+  "Y2TWHM",
+  "Y1TWHM"
+ ],
+ "TPE-KIX|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-KMJ|eco": [
+  "Y4TWNEA",
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-KUL|eco": [
+  "Y1TWSEA"
+ ],
+ "TPE-LAX|eco": [
+  "Y3TWUSCA",
+  "Y2TWUSCA",
+  "Y1TWUSCA"
+ ],
+ "TPE-MNL|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-NGO|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-OKA|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-ONT|eco": [
+  "Y3TWUSCA",
+  "Y2TWUSCA",
+  "Y1TWUSCA"
+ ],
+ "TPE-PHX|eco": [
+  "Y3TWUSCA",
+  "Y2TWUSCA",
+  "Y1TWUSCA"
+ ],
+ "TPE-PQC|eco": [
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-PRG|eco": [
+  "Y3TWEU",
+  "Y2TWEU",
+  "Y1TWEU"
+ ],
+ "TPE-PUS|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-SDJ|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-SEA|eco": [
+  "Y3TWUSCA",
+  "Y2TWUSCA",
+  "Y1TWUSCA"
+ ],
+ "TPE-SFO|eco": [
+  "Y3TWUSCA",
+  "Y2TWUSCA",
+  "Y1TWUSCA"
+ ],
+ "TPE-SGN|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-SHI|eco": [
+  "Y4TWNEA",
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "TPE-SIN|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "TPE-UKB|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-KMJ|eco": [
+  "Y1TWNEA"
+ ],
+ "RMQ-MFM|eco": [
+  "Y2TWHM",
+  "Y1TWHM"
+ ],
+ "RMQ-NRT|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-OKA|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-PQC|eco": [
+  "Y4TWSEA",
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "RMQ-PUS|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-SHI|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-TAK|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-UKB|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "RMQ-CTS|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
  ]
 }
