@@ -10,7 +10,10 @@ const BASE = 'http://localhost:9377';
 // camofox session 名要固定：profile 是持久的，帶著瀏覽紀錄與 cookie 的 profile
 // 在 reCAPTCHA v3 拿到的分數比每次全新的乾淨 profile 高。但同時跑的兩支程式不能共用
 // 同一個名字（收尾會 DELETE 掉對方的 session），所以用途不同就給不同的固定名字。
-const USER = process.env.TIGERAIR_CF_USER || 'tigerair';
+// --member：用已登入 TigerClub 的 `tigerclub` profile（信任裝置＋membership session 常駐），
+// GraphQL 帶 Authorization: Bearer <book_ibe_app_jwt>（JWT 12 小時效期，載入訂位頁會自動換新）
+const MEMBER = process.argv.includes('--member');
+const USER = process.env.TIGERAIR_CF_USER || (MEMBER ? 'tigerclub' : 'tigerair');
 const SITEKEY = '6LeAFC4hAAAAANDlMutLdP9CLqWaUKYxEUMPb5L2';
 
 async function cf(method, p, body) {
@@ -27,7 +30,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // 在頁面內跑的函式：走完 waiting-room → recaptcha → create session → flight search result
 const IN_PAGE = args => `(async () => {
-  const { origin, destination, date, sitekey, adult, returnDate } = ${JSON.stringify(args)};
+  const { origin, destination, date, sitekey, adult, returnDate, member } = ${JSON.stringify(args)};
   const deviceId = crypto.randomUUID();
   const H = {
     'Content-Type': 'application/json',
@@ -35,6 +38,11 @@ const IN_PAGE = args => `(async () => {
     'x-device-id': deviceId,
     'x-requested-with': 'XMLHttpRequest',
   };
+  if (member) {
+    const m = document.cookie.match(/book_ibe_app_jwt=([^;]+)/);
+    if (!m) return { error: 'no member jwt（tigerclub profile 沒登入或 JWT 沒換到）' };
+    H['Authorization'] = 'Bearer ' + decodeURIComponent(m[1]);
+  }
   const j = async (url, opt) => {
     const r = await fetch(url, opt);
     const t = await r.text();
@@ -136,6 +144,8 @@ async function main() {
   const delayIdx = args.indexOf('--delay');
   let delay = 9000;
   if (delayIdx >= 0) { delay = parseInt(args[delayIdx + 1], 10) * 1000; args.splice(delayIdx, 2); }
+  const mIdx = args.indexOf('--member');
+  if (mIdx >= 0) args.splice(mIdx, 1);
   const retIdx = args.indexOf('--return');
   let returnDate = null;
   if (retIdx >= 0) { returnDate = args[retIdx + 1]; args.splice(retIdx, 2); }
@@ -175,7 +185,7 @@ async function main() {
       let r;
       try {
         const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate }),
+          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: MEMBER }),
         });
         r = res.result;
       } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
@@ -186,7 +196,7 @@ async function main() {
         await openTab();
         try {
           const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate }),
+            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: MEMBER }),
           });
           r = res.result;
         } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
