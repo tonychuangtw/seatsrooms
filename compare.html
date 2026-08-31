@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⚔️ 虎航 vs 星宇 比價</title>
+<meta name="theme-color" content="#0d0d10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="stylesheet" href="assets/shared.css?v=20260815">
+<style>
+  .pickrow{ display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-top:1px solid var(--border); }
+  .pickrow:first-child{ border-top:0; }
+  .picklab{ flex:0 0 58px; font-size:0.75rem; color:var(--dim); padding-top:6px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .chip{ font:inherit; font-size:0.82rem; cursor:pointer; background:var(--chip); color:var(--text);
+    border:1px solid var(--border); border-radius:99px; padding:4px 10px; }
+  .chip .cd{ font-size:0.72rem; color:var(--dim); margin-left:4px; }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#0d0d10; }
+  .chip[aria-pressed="true"] .cd{ color:#0d0d10; opacity:.7; }
+
+  .stats{ display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 0; }
+  .st{ flex:1 1 118px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:8px 11px; }
+  .st .l{ font-size:0.74rem; color:var(--dim); }
+  .st .v{ font-size:1.05rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .st.good .v{ color:var(--ok); }
+
+  .cals{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .cal{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:11px; }
+  .cal h3{ font-size:0.9rem; margin:0 0 8px; display:flex; justify-content:space-between; align-items:baseline; }
+  .cal h3 em{ font-style:normal; font-size:0.72rem; color:var(--dim); font-weight:400; }
+  .cg{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .cg .hd{ text-align:center; font-size:0.68rem; color:var(--dim); padding-bottom:2px; }
+  .cg .hd.we{ color:var(--warn); }
+  .cell{ aspect-ratio:1/1.15; border-radius:6px; background:var(--bg); border:1px solid transparent;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:1px; }
+  .cell.blank{ background:transparent; }
+  .cell .d{ font-size:0.6rem; color:var(--dim); line-height:1; }
+  .cell .p{ font-size:0.64rem; font-variant-numeric:tabular-nums; line-height:1.25; color:var(--dim); }
+  .cell .p.win{ font-weight:700; color:var(--ok); }
+  .cell.both{ background:var(--okbg); }
+
+  table{ border-collapse:collapse; width:100%; font-size:0.86rem; }
+  th,td{ text-align:right; padding:5px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th{ color:var(--dim); font-weight:600; font-size:0.76rem; }
+  th.l,td.l{ text-align:left; }
+  td.n{ font-variant-numeric:tabular-nums; }
+  td.win{ font-weight:700; color:var(--ok); }
+  .we{ color:var(--warn); }
+  .scroll{ overflow-x:auto; }
+  .rtname{ color:var(--text2); font-size:0.78rem; margin-left:6px; }
+</style>
+</head>
+<body>
+<h1>⚔️ 虎航 vs 星宇 比價</h1>
+<p class="sub">兩家都飛的航線,同一天含稅價並列 · 🐯 虎航 tigerLight（未稅＋實測稅金）· ✨ 星宇經濟艙（官網含稅）</p>
+<div class="nav">
+  <a href="index.html">✈️ 機位主頁</a>
+  <a href="tigerair.html">🐯 虎航票價</a>
+  <a href="starlux.html">✨ 星宇票價</a>
+  <a href="hotels.html">🏨 飯店房況</a>
+</div>
+
+<div id="signin-card" class="card">
+  <p>用 Google 登入後查看(跟機位頁同一顆登入,登過就直接進)</p>
+  <div id="gsi-btn"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="card">
+    <h2>選航線（只列兩家都飛的）</h2>
+    <div id="picker"></div>
+    <div class="pickrow">
+      <div class="picklab">方向</div>
+      <div class="chips">
+        <button class="chip" id="b-out" aria-pressed="true">去程</button>
+        <button class="chip" id="b-ret" aria-pressed="false">回程</button>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="cals" id="cals"></div>
+
+  <div class="card">
+    <h2>並列明細（有比較意義的日子,按價差排）</h2>
+    <div class="scroll"><table id="best">
+      <thead><tr><th class="l">日期</th><th class="l">週</th><th>🐯 虎航</th><th>✨ 星宇</th><th>差額</th><th class="l">便宜方</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="msg" style="margin-top:10px">
+      虎航含稅=票價日曆未稅+該航向實測稅金(標「未稅」代表稅金還沒量到,比較時要自己加約 1,000~1,800)。
+      星宇是官網含稅價(海外出發已換算台幣)。兩家都是每天最便宜艙等,行李規則不同:虎航 tigerLight 無托運,星宇經濟艙含 23kg。
+    </p>
+  </div>
+</div>
+
+<script src="assets/shared.js?v=20260823"></script>
+<script>
+(function(){
+  "use strict";
+  var CITY={TPE:"台北桃園",RMQ:"台中",KHH:"高雄",TNN:"台南",NRT:"東京成田",HND:"東京羽田",
+    KIX:"大阪關西",NGO:"名古屋",CTS:"札幌新千歲",HKD:"函館",OKA:"沖繩那霸",ISG:"石垣島",
+    FUK:"福岡",KMJ:"熊本",SDJ:"仙台",ICN:"首爾仁川",PUS:"釜山",CJU:"濟州",DAD:"峴港"};
+  var TW=["TPE","RMQ","KHH","TNN"], WD=["日","一","二","三","四","五","六"];
+  var IT={}, JX={}, span={from:null,to:null};
+  var st={origin:"TPE",dest:"CTS",dir:"out"};
+
+  function city(c){ return CITY[c]||c; }
+  function fmt(n){ return Number(n).toLocaleString("en-US"); }
+  function key(){ return st.dir==="out" ? st.origin+"-"+st.dest : st.dest+"-"+st.origin; }
+  function pairs(){ // 兩家都飛（任一方向有交集就算這對）
+    var s={};
+    Object.keys(IT).forEach(function(k){ if(JX[k]){ var p=k.split("-");
+      var o=TW.indexOf(p[0])>=0?p[0]:p[1], d=TW.indexOf(p[0])>=0?p[1]:p[0];
+      s[o+"-"+d]=1; } });
+    return Object.keys(s);
+  }
+  function dests(o){ return pairs().filter(function(k){ return k.split("-")[0]===o; })
+    .map(function(k){ return k.split("-")[1]; }); }
+
+  function buildPicker(){
+    var box=$("picker"); box.innerHTML="";
+    var row=document.createElement("div"); row.className="pickrow";
+    row.innerHTML='<div class="picklab">台灣</div>';
+    var chips=document.createElement("div"); chips.className="chips";
+    TW.filter(function(o){ return dests(o).length; }).forEach(function(o){
+      var b=document.createElement("button"); b.className="chip"; b.type="button";
+      b.setAttribute("aria-pressed", o===st.origin);
+      b.innerHTML=esc(city(o))+'<span class="cd">'+esc(o)+"</span>";
+      b.onclick=function(){ st.origin=o; var ds=dests(o);
+        if(ds.indexOf(st.dest)<0) st.dest=ds[0]; render(); };
+      chips.appendChild(b);
+    });
+    row.appendChild(chips); box.appendChild(row);
+
+    var r2=document.createElement("div"); r2.className="pickrow";
+    r2.innerHTML='<div class="picklab">目的地</div>';
+    var c2=document.createElement("div"); c2.className="chips";
+    dests(st.origin).sort().forEach(function(d){
+      var b=document.createElement("button"); b.className="chip"; b.type="button";
+      b.setAttribute("aria-pressed", d===st.dest);
+      b.innerHTML=esc(city(d))+'<span class="cd">'+esc(d)+"</span>";
+      b.onclick=function(){ st.dest=d; render(); };
+      c2.appendChild(b);
+    });
+    r2.appendChild(c2); box.appendChild(r2);
+  }
+
+  function months(){
+    var out=[], cur=span.from.slice(0,7), end=span.to.slice(0,7);
+    while(cur<=end){ out.push(cur);
+      var p=cur.split("-"), y=+p[0], m=+p[1]+1;
+      if(m>12){ m=1; y++; }
+      cur=y+"-"+String(m).padStart(2,"0"); }
+    return out;
+  }
+
+  // 回 {days:{date:{it:含稅或null, itNet:未稅, jx:含稅}}, itTaxKnown}
+  function joined(){
+    var k=key(), it=IT[k], jx=JX[k];
+    var days={}, itTaxKnown = it && it.tax!=null;
+    if(it) Object.keys(it.days).forEach(function(d){
+      days[d]={itNet:it.days[d], it: itTaxKnown? it.days[d]+it.tax : null}; });
+    if(jx) Object.keys(jx).length && Object.keys(jx).forEach(function(d){
+      (days[d]=days[d]||{}).jx=jx[d]; });
+    return {days:days, itTaxKnown:itTaxKnown, itTax: it?it.tax:null};
+  }
+
+  function render(){
+    buildPicker();
+    $("b-out").setAttribute("aria-pressed", st.dir==="out");
+    $("b-ret").setAttribute("aria-pressed", st.dir==="ret");
+    var v=joined(), days=v.days;
+    var ds=Object.keys(days).sort();
+    if(!ds.length){
+      $("stats").innerHTML='<div class="st"><div class="l">這個方向</div><div class="v">—</div></div>';
+      $("cals").innerHTML=""; document.querySelector("#best tbody").innerHTML=""; return;
+    }
+    // 統計：兩家都有價的日子誰便宜
+    var itWin=0, jxWin=0, bothN=0, itBest=null, jxBest=null;
+    ds.forEach(function(d){ var x=days[d];
+      var itP = x.it!=null ? x.it : null;
+      if(itP!=null && (itBest===null||itP<itBest)) itBest=itP;
+      if(x.jx!=null && (jxBest===null||x.jx<jxBest)) jxBest=x.jx;
+      if(itP!=null && x.jx!=null){ bothN++; if(itP<x.jx) itWin++; else if(x.jx<itP) jxWin++; }
+    });
+    $("stats").innerHTML=[
+      ["🐯 虎航最低", itBest!=null?fmt(itBest):"—", v.itTaxKnown?"含稅":"（稅金未量,只有未稅價）", itWin>=jxWin&&itBest!=null],
+      ["✨ 星宇最低", jxBest!=null?fmt(jxBest):"—", "含稅", jxWin>itWin&&jxBest!=null],
+      ["虎航較便宜", itWin+" 天", "兩家都有航班共 "+bothN+" 天", false],
+      ["星宇較便宜", jxWin+" 天", "同日含稅相比", false]
+    ].map(function(s){
+      return '<div class="st'+(s[3]?" good":"")+'"><div class="l">'+esc(s[0])+
+        '</div><div class="v">'+esc(String(s[1]))+'</div><div class="l">'+esc(s[2])+"</div></div>";
+    }).join("");
+
+    $("cals").innerHTML=months().map(function(ym){
+      var p=ym.split("-"), y=+p[0], m=+p[1];
+      var first=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+      var nd=new Date(Date.UTC(y,m,0)).getUTCDate();
+      var cells="";
+      WD.forEach(function(w,i){ cells+='<div class="hd'+((i===0||i===6)?" we":"")+'">'+w+"</div>"; });
+      for(var i=0;i<first;i++) cells+='<div class="cell blank"></div>';
+      var any=false;
+      for(var d=1; d<=nd; d++){
+        var iso=ym+"-"+String(d).padStart(2,"0"), x=days[iso];
+        if(!x){ cells+='<div class="cell"><div class="d">'+d+'</div><div class="p">–</div></div>'; continue; }
+        any=true;
+        var itP = x.it!=null? x.it : x.itNet;   // 稅未量就顯示未稅
+        var itHas = itP!=null, jxHas = x.jx!=null;
+        var cmpIt = x.it, cmpJx = x.jx;
+        var itWinC = itHas&&jxHas&&cmpIt!=null&&cmpIt<cmpJx;
+        var jxWinC = itHas&&jxHas&&cmpIt!=null&&cmpJx<cmpIt;
+        cells+='<div class="cell'+((itWinC||jxWinC)?" both":"")+'"><div class="d">'+d+"</div>"+
+          '<div class="p'+(itWinC?" win":"")+'">🐯'+(itHas?fmt(itP):"–")+"</div>"+
+          '<div class="p'+(jxWinC?" win":"")+'">✨'+(jxHas?fmt(x.jx):"–")+"</div></div>";
+      }
+      if(!any) return "";
+      return '<div class="cal"><h3>'+y+"年"+m+"月<em>綠字=當天便宜方</em></h3>"+
+        '<div class="cg">'+cells+"</div></div>";
+    }).join("");
+
+    var rows=ds.filter(function(d){ return days[d].jx!=null && days[d].itNet!=null; })
+      .map(function(d){ var x=days[d];
+        return {d:d, it:x.it, itNet:x.itNet, jx:x.jx,
+                diff: x.it!=null? Math.abs(x.it-x.jx) : null,
+                winner: x.it==null? null : (x.it<x.jx?"🐯 虎航":(x.jx<x.it?"✨ 星宇":"平手"))};
+      });
+    rows.sort(function(a,b){ return (b.diff||0)-(a.diff||0); });
+    document.querySelector("#best tbody").innerHTML=rows.slice(0,30).map(function(r){
+      var wd=new Date(r.d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
+      var itTxt = r.it!=null? fmt(r.it) : fmt(r.itNet)+"未稅";
+      var itWinC = r.winner==="🐯 虎航", jxWinC = r.winner==="✨ 星宇";
+      return '<tr><td class="l n">'+esc(r.d)+'</td><td class="l'+we+'">'+WD[wd]+"</td>"+
+        '<td class="n'+(itWinC?" win":"")+'">'+itTxt+'</td><td class="n'+(jxWinC?" win":"")+'">'+fmt(r.jx)+"</td>"+
+        '<td class="n">'+(r.diff!=null?fmt(r.diff):"—")+'</td><td class="l">'+(r.winner||"—")+"</td></tr>";
+    }).join("");
+  }
+
+  function load(){
+    var pending=2, failed=false;
+    function done(){ if(--pending) return;
+      var all=[];
+      Object.keys(IT).forEach(function(k){ if(JX[k]) all=all.concat(Object.keys(IT[k].days)); });
+      if(!all.length){ toast("還沒有可比較的資料","err"); return; }
+      all.sort(); span.from=all[0]; span.to=all[all.length-1];
+      var ps=pairs();
+      if(ps.indexOf(st.origin+"-"+st.dest)<0 && ps.length){
+        var p=ps[0].split("-"); st.origin=p[0]; st.dest=p[1];
+      }
+      render();
+    }
+    api("GET","/api/tigerair/prices",null,function(e,d){
+      if(e){ if(!failed){failed=true;toast("虎航資料讀取失敗："+e,"err");} return; }
+      (d.fares||[]).forEach(function(f){
+        var k=f.origin+"-"+f.destination;
+        if(!IT[k]) IT[k]={days:{},tax:(d.tax&&d.tax[k]?d.tax[k].tax:null)};
+        IT[k].days[f.date]=f.amount;
+      });
+      done();
+    });
+    api("GET","/api/starlux/prices",null,function(e,d){
+      if(e){ if(!failed){failed=true;toast("星宇資料讀取失敗："+e,"err");} return; }
+      (d.fares||[]).forEach(function(f){
+        var k=f.origin+"-"+f.destination;
+        (JX[k]=JX[k]||{})[f.date]=(f.twd!=null?f.twd:f.amount);
+      });
+      done();
+    });
+  }
+
+  function showApp(){ $("signin-card").classList.add("hidden"); $("app").classList.remove("hidden");
+    refreshSession(); load(); }
+  function signOut(){ try{ sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESS_KEY); }catch(e){}
+    $("app").classList.add("hidden"); $("signin-card").classList.remove("hidden"); }
+  onAuthFail(signOut);
+
+  window.addEventListener("load",function(){
+    $("b-out").addEventListener("click",function(){ st.dir="out"; render(); });
+    $("b-ret").addEventListener("click",function(){ st.dir="ret"; render(); });
+    gsiInit(showApp); if(token()) showApp();
+  });
+})();
+</script>
+</body>
+</html>
