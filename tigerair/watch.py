@@ -188,6 +188,17 @@ def main():
         return
 
     hits.sort(key=lambda h: h["total"] if h["total"] is not None else h["amount"])
+    # 單一 watchlist 條目一輪最多列 5 筆：新條目第一輪沒有基準，整條航線幾十個日期
+    # 會同時觸發（08-31 CTS-KHH 一口氣 26 筆洗版），只推最便宜的幾筆＋一行總數
+    shown, kept, extra = {}, [], {}
+    for h in hits:
+        kid = id(h["w"])
+        shown[kid] = shown.get(kid, 0) + 1
+        if shown[kid] <= 5:
+            kept.append(h)
+        else:
+            extra[h["w"]["route"]] = extra.get(h["w"]["route"], 0) + 1
+    hits = kept
     if a.verify:
         verify(hits[:a.verify])
     lines = ["🐯 虎航降價"]
@@ -201,6 +212,8 @@ def main():
                      + (f"\n  {w['note']}" if w.get("note") else ""))
     if len(hits) > 25:
         lines.append(f"…另外還有 {len(hits) - 25} 筆")
+    for rt, n in extra.items():
+        lines.append(f"…{rt} 另有 {n} 個日期低於門檻（只列最便宜 5 筆）")
     lines.append("https://booking.tigerairtw.com/")
     text = "\n".join(lines)
     print(text)
