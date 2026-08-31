@@ -46,7 +46,7 @@ for k, days in routes.items():
 
 all_dates = sorted({dt for v in data.values() for dt in v["days"]})
 today = datetime.date.today().isoformat()
-scanned = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+scanned = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M") + " 台北"
 
 payload = json.dumps({"routes": data, "from": all_dates[0], "to": all_dates[-1],
                       "scanned": scanned}, ensure_ascii=False, separators=(",", ":"))
@@ -251,10 +251,33 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="picker">
   <h2>選航線</h2>
   <div id="groups"></div>
-  <div class="dirtoggle">
+  <div class="dirtoggle" id="dirtoggle">
     <button class="chip" id="btn-out" aria-pressed="true">去程</button>
     <button class="chip" id="btn-ret" aria-pressed="false">回程</button>
   </div>
+  <div class="dirtoggle" id="modechips" style="flex-wrap:wrap;align-items:center">
+    <button class="chip" data-n="0" aria-pressed="true">單程</button>
+    <button class="chip" data-n="2">來回 3天2夜</button>
+    <button class="chip" data-n="3">來回 4天3夜</button>
+    <button class="chip" data-n="4">來回 5天4夜</button>
+    <button class="chip" data-n="5">來回 6天5夜</button>
+    <label class="chip" style="gap:6px">自訂 <input id="nights-in" type="number" min="1" max="60" value="7" style="width:54px;font:inherit;padding:1px 4px"> 晚</label>
+  </div>
+  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">虎航來回＝兩張單程相加（訂位引擎實測，來回沒有折扣），所以來回價是精確值。含稅總價＝雙向票價＋雙向稅金；任一向稅金還沒量到就先顯示未稅。</p>
+</section>
+
+<section class="board" id="combo-card" style="display:none">
+  <h2>找最便宜的去回組合</h2>
+  <div class="dirtoggle" style="flex-wrap:wrap;align-items:flex-end;border-top:0;margin-top:0;padding-top:0;gap:10px">
+    <label style="font-size:12.5px;color:var(--muted)">最少幾晚<br><input id="c-min" type="number" min="1" max="60" value="2" style="width:64px;font:inherit;padding:3px 6px"></label>
+    <label style="font-size:12.5px;color:var(--muted)">最多幾晚<br><input id="c-max" type="number" min="1" max="60" value="6" style="width:64px;font:inherit;padding:3px 6px"></label>
+    <label style="font-size:12.5px;color:var(--muted)">出發月份（留空＝全部）<br><input id="c-month" type="month" style="font:inherit;padding:3px 6px"></label>
+    <button class="chip" id="c-go" type="button">找</button>
+  </div>
+  <div class="tblwrap" style="margin-top:12px"><table id="combo">
+    <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回未稅</th><th>含稅總價</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
 </section>
 
 <div class="summary" id="summary"></div>
@@ -263,7 +286,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="board">
   <h2>這條航線最便宜的 20 天</h2>
   <div class="tblwrap"><table id="best">
-    <thead><tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅</th><th>含稅總價</th></tr></thead>
+    <thead id="best-head"><tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅</th><th>含稅總價</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>
@@ -296,9 +319,24 @@ const DATA = __PAYLOAD__;
 const R = DATA.routes;
 const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
-const state = { origin:'KHH', dest:'CJU', dir:'out' };
+const state = { origin:'KHH', dest:'CJU', dir:'out', nights:0 };
 
 function key(){ return state.dir==='out' ? state.origin+'-'+state.dest : state.dest+'-'+state.origin; }
+function addDays(iso,n){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function retKey(k){ const p=k.split('-'); return p[1]+'-'+p[0]; }
+// 來回＝兩張單程相加（實測無折扣）
+function rtView(k,n){
+  const go=R[k], back=R[retKey(k)];
+  if(!go||!back) return null;
+  const days={}, det={}; let any=false;
+  for(const d of Object.keys(go.days)){ const rd=addDays(d,n), r=back.days[rd];
+    if(r!==undefined){ days[d]=go.days[d]+r; det[d]={g:go.days[d],r,rd}; any=true; } }
+  if(!any) return null;
+  return {days, rt:det, tax:(go.tax!=null&&back.tax!=null)?go.tax+back.tax:null};
+}
+function curView(){ const k=key();
+  if(state.nights>0) return rtView(k,state.nights);
+  return R[k] ? {days:R[k].days, rt:null, tax:R[k].tax} : null; }
 
 function buildGroups(){
   const box = document.getElementById('groups');
@@ -352,15 +390,25 @@ function render(){
   document.querySelectorAll('#groups > .grp:first-child .chip')
     .forEach(b=>b.setAttribute('aria-pressed', b.dataset.o===state.origin));
   buildDests();
+  const rt = state.nights>0;
+  if(rt) state.dir='out';
+  document.getElementById('dirtoggle').style.display = rt?'none':'';
+  document.getElementById('rtnote').style.display = rt?'':'none';
+  document.getElementById('combo-card').style.display = rt?'':'none';
+  document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.n===state.nights));
   document.getElementById('btn-out').setAttribute('aria-pressed', state.dir==='out');
   document.getElementById('btn-ret').setAttribute('aria-pressed', state.dir==='ret');
+  document.getElementById('best-head').innerHTML = rt
+    ? '<tr><th class="l">出發</th><th class="l">星期</th><th class="l">回程</th><th>去程</th><th>回程</th><th>＋稅</th><th>含稅總價</th></tr>'
+    : '<tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅</th><th>含稅總價</th></tr>';
 
-  const k = key(), v = R[k];
+  const k = key(), v = curView();
   const cals = document.getElementById('cals');
   const sum = document.getElementById('summary');
   const bestBody = document.querySelector('#best tbody');
   if(!v){
-    sum.innerHTML='<div class="stat"><div class="lab">這個方向</div><div class="val">—</div><div class="note">沒有掃到票價</div></div>';
+    sum.innerHTML='<div class="stat"><div class="lab">這個方向</div><div class="val">—</div><div class="note">'+
+      (rt?'這個天數組不出來回（回程日都沒班機）':'沒有掃到票價')+'</div></div>';
     cals.innerHTML=''; bestBody.innerHTML=''; return;
   }
   const days = v.days, tax = v.tax;
@@ -370,8 +418,9 @@ function render(){
   const med = prices[Math.floor(prices.length/2)];
   const T = n => tax==null ? null : n+tax;
 
+  const rtlab = rt ? ('來回'+(state.nights+1)+'天'+state.nights+'夜 · ') : '';
   sum.innerHTML = [
-    ['最低價', (T(lo)??lo), (tax==null?'未稅 ':'含稅 ')+fmt(lo)+(tax==null?'':' ＋稅 '+fmt(tax)), true],
+    ['最低價', (T(lo)??lo), rtlab+(tax==null?'未稅 ':'含稅 ')+fmt(lo)+(tax==null?'':' ＋稅 '+fmt(tax)), true],
     ['中位數', (T(med)??med), '一半的日子比這便宜', false],
     ['最高價', (T(hi)??hi), '整段期間最貴的一天', false],
     ['有票天數', Object.keys(days).length, DATA.from+' → '+DATA.to, false],
@@ -419,26 +468,63 @@ function render(){
   bestBody.innerHTML = Object.entries(days).sort((a,b)=>a[1]-b[1]).slice(0,20).map(([d,p])=>{
     const wd = new Date(d+'T00:00:00Z').getUTCDay();
     const we = (wd===0||wd===6)?' we':'';
+    if(rt){ const x=v.rt[d];
+      return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
+        '<td class="l num">'+x.rd+'</td><td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>'+
+        '<td class="num">'+(tax==null?'未量':fmt(tax))+'</td>'+
+        '<td class="num tot">'+(tax==null?'—':fmt(p+tax))+'</td></tr>'; }
     return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
       '<td class="num">'+fmt(p)+'</td><td class="num">'+(tax==null?'未量':fmt(tax))+'</td>'+
       '<td class="num tot">'+(tax==null?'—':fmt(p+tax))+'</td></tr>';
   }).join('');
 }
 
+// 找最便宜的去回組合：給晚數範圍（＋可選出發月），列前 15 組
+function findCombos(){
+  const body = document.querySelector('#combo tbody');
+  const mn=Math.max(1,+document.getElementById('c-min').value||1);
+  const mx=Math.max(mn,+document.getElementById('c-max').value||mn);
+  const ym=document.getElementById('c-month').value;
+  const k=key(), go=R[k], back=R[retKey(k)];
+  if(!go||!back){ body.innerHTML='<tr><td colspan="7" class="l">這條航線缺其中一個方向的資料</td></tr>'; return; }
+  const tax=(go.tax!=null&&back.tax!=null)?go.tax+back.tax:null;
+  const out=[];
+  for(const d of Object.keys(go.days)){ if(ym && !d.startsWith(ym)) continue;
+    for(let n=mn;n<=mx;n++){ const rd=addDays(d,n), r=back.days[rd];
+      if(r!==undefined) out.push({d,rd,n,g:go.days[d],r,t:go.days[d]+r}); } }
+  out.sort((a,b)=>a.t-b.t||a.d.localeCompare(b.d));
+  body.innerHTML = out.length ? out.slice(0,15).map(x=>{
+    const wd=new Date(x.d+'T00:00:00Z').getUTCDay(), we=(wd===0||wd===6)?' we':'';
+    return '<tr><td class="l num'+we+'">'+x.d+'（'+WD[wd]+'）</td><td class="l num">'+x.rd+'</td>'+
+      '<td class="num">'+x.n+'</td><td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>'+
+      '<td class="num">'+fmt(x.t)+'</td><td class="num tot">'+(tax==null?'—':fmt(x.t+tax))+'</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="l">這個範圍沒有可組合的日期</td></tr>';
+}
+
 function buildAll(){
-  const rows = Object.entries(R).map(([k,v])=>{
-    const e = Object.entries(v.days).sort((a,b)=>a[1]-b[1])[0];
-    return {k, v, date:e[0], p:e[1], tot: v.tax==null? null : e[1]+v.tax};
-  }).sort((a,b)=> (a.tot??a.p)-(b.tot??b.p));
+  const rt = state.nights>0;
+  let entries = Object.entries(R);
+  if(rt) entries = entries.filter(([k,v])=>v.oc==='TW');
+  const rows = entries.map(([k,v])=>{
+    const view = rt ? rtView(k,state.nights) : v;
+    if(!view) return null;
+    const e = Object.entries(view.days).sort((a,b)=>a[1]-b[1])[0];
+    return {k, v, tax:view.tax, date:e[0], p:e[1], tot: view.tax==null? null : e[1]+view.tax};
+  }).filter(Boolean).sort((a,b)=> (a.tot??a.p)-(b.tot??b.p));
   document.querySelector('#all tbody').innerHTML = rows.map(r=>
-    '<tr><td class="l"><b>'+r.k+'</b><span class="rt-name">'+r.v.on+' → '+r.v.dn+'</span></td>'+
-    '<td class="num">'+fmt(r.p)+'</td><td class="num">'+(r.v.tax==null?'未量':fmt(r.v.tax))+'</td>'+
+    '<tr><td class="l"><b>'+r.k+(rt?' 來回':'')+'</b><span class="rt-name">'+r.v.on+(rt?' ⇄ ':' → ')+r.v.dn+'</span></td>'+
+    '<td class="num">'+fmt(r.p)+'</td><td class="num">'+(r.tax==null?'未量':fmt(r.tax))+'</td>'+
     '<td class="num tot">'+(r.tot==null?'—':fmt(r.tot))+'</td>'+
     '<td class="l num">'+r.date+'</td></tr>').join('');
 }
 
 document.getElementById('btn-out').onclick=()=>{ state.dir='out'; render(); };
 document.getElementById('btn-ret').onclick=()=>{ state.dir='ret'; render(); };
+document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>
+  b.addEventListener('click',()=>{ state.nights=+b.dataset.n; buildAll(); render(); }));
+document.getElementById('nights-in').addEventListener('change',function(){
+  const n=+this.value; if(n>0){ state.nights=n; buildAll(); render(); } });
+document.getElementById('c-go').addEventListener('click',findCombos);
 buildGroups(); buildAll(); render();
 </script>
 """

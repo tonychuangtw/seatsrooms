@@ -33,7 +33,7 @@ for k, days in routes.items():
                "tax": None, "days": days}
 
 all_dates = sorted({dt for v in data.values() for dt in v["days"]})
-scanned = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+scanned = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M") + " 台北"
 payload = json.dumps({"routes": data, "from": all_dates[0], "to": all_dates[-1],
                       "scanned": scanned,
                       "rt": {k: {"go": v["go"], "ret": v["ret"]} for k, v in RT.items()}},
