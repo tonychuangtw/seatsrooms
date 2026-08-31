@@ -11,6 +11,7 @@ import json, sys, datetime, collections
 fares = json.load(open(sys.argv[1]))
 NET = json.load(open(sys.argv[2]))
 CITY = NET.get("names", {})
+COUNTRY = NET.get("countries", {})
 out_path = sys.argv[3] if len(sys.argv) > 3 else "starlux-prices.html"
 try:
     RT = json.load(open(sys.argv[4] if len(sys.argv) > 4 else "baseline-rt.json"))["routes"]
@@ -29,7 +30,7 @@ for k, days in routes.items():
     data[k] = {"o": o, "d": d,
                "on": CITY.get(o, o), "dn": CITY.get(d, d),
                "oc": "TW" if o in TW else "OTHER",
-               "dc": "TW" if d in TW else "OTHER",
+               "dc": COUNTRY.get(d, "其他"),
                "tax": None, "days": days}
 
 all_dates = sorted({dt for v in data.values() for dt in v["days"]})
@@ -307,7 +308,7 @@ const DATA = __PAYLOAD__;
 const R = DATA.routes;
 const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
-const first = Object.keys(R).sort((a,b)=>Object.keys(R[b].days).length-Object.keys(R[a].days).length)[0].split('-');
+const first = Object.keys(R).filter(k=>R[k].oc==='TW').sort((a,b)=>Object.keys(R[b].days).length-Object.keys(R[a].days).length)[0].split('-');
 const state = { origin:first[0], dest:first[1], dir:'out', nights:0 };
 const RT = DATA.rt || {};
 const addDays = (iso,n) => { const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
@@ -323,11 +324,10 @@ function key(){ return state.dir==='out' ? state.origin+'-'+state.dest : state.d
 
 function buildGroups(){
   const box = document.getElementById('groups');
-  const origins = [...new Set(Object.values(R).map(v=>v.o))]
-    .sort((a,b)=>Object.values(R).filter(v=>v.d===b).length - Object.values(R).filter(v=>v.o===a).length);
+  const origins = ['TPE','RMQ','KHH','TNN'].filter(o=>Object.values(R).some(v=>v.o===o));
   const oRow = document.createElement('div');
   oRow.className = 'grp';
-  oRow.innerHTML = '<div class="grp-label">出發地</div>';
+  oRow.innerHTML = '<div class="grp-label">台灣</div>';
   const oChips = document.createElement('div'); oChips.className='chips';
   origins.forEach(o=>{
     const b=document.createElement('button'); b.className='chip'; b.dataset.o=o;
@@ -353,10 +353,9 @@ function buildDests(){
     const v = R[state.origin+'-'+d];
     (byC[v.dc] = byC[v.dc] || []).push(d);
   });
-  const names = {TW:'台灣',OTHER:'抵達'};
-  ['TW','OTHER'].filter(c=>byC[c]).forEach(c=>{
+  Object.keys(byC).sort((a,b)=>byC[b].length-byC[a].length||a.localeCompare(b)).forEach(c=>{
     const row=document.createElement('div'); row.className='grp';
-    row.innerHTML='<div class="grp-label">'+names[c]+'</div>';
+    row.innerHTML='<div class="grp-label">'+c+'</div>';
     const chips=document.createElement('div'); chips.className='chips';
     byC[c].forEach(d=>{
       const v=R[state.origin+'-'+d];

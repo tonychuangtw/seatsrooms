@@ -143,7 +143,7 @@
 (function(){
   "use strict";
   var WD=["日","一","二","三","四","五","六"];
-  var R={}, RT={}, NAMES={}, span={from:null,to:null};
+  var R={}, RT={}, NAMES={}, COUNTRY={}, span={from:null,to:null};
   var st={origin:null,dest:null,dir:"out",nights:0};   // nights 0 = 單程
   var TWO=["TPE","RMQ","KHH","TNN"];
 
@@ -169,10 +169,10 @@
 
   function buildPicker(){
     var box=$("picker"); box.innerHTML="";
-    // 出發地：星宇只有台灣三個基地會有一長串目的地,其餘是回程起點,依目的地數量排序
-    var os=origins().sort(function(a,b){ return dests(b).length-dests(a).length; });
+    // 出發只列台灣基地（其餘機場都是回程起點,用「方向」切回程就好）,目的地按國家分組
+    var os=TWO.filter(function(o){ return dests(o).length; });
     var row=document.createElement("div"); row.className="pickrow";
-    row.innerHTML='<div class="picklab">出發</div>';
+    row.innerHTML='<div class="picklab">台灣</div>';
     var chips=document.createElement("div"); chips.className="chips";
     os.forEach(function(o){
       var b=document.createElement("button"); b.className="chip"; b.type="button";
@@ -184,17 +184,23 @@
     });
     row.appendChild(chips); box.appendChild(row);
 
-    var r2=document.createElement("div"); r2.className="pickrow";
-    r2.innerHTML='<div class="picklab">抵達</div>';
-    var c2=document.createElement("div"); c2.className="chips";
-    dests(st.origin).sort().forEach(function(d){
-      var b=document.createElement("button"); b.className="chip"; b.type="button";
-      b.setAttribute("aria-pressed", d===st.dest);
-      b.innerHTML=esc(city(d))+'<span class="cd">'+esc(d)+"</span>";
-      b.onclick=function(){ st.dest=d; render(); };
-      c2.appendChild(b);
-    });
-    r2.appendChild(c2); box.appendChild(r2);
+    var byC={};
+    dests(st.origin).forEach(function(d){ var c=COUNTRY[d]||"其他";
+      (byC[c]=byC[c]||[]).push(d); });
+    Object.keys(byC).sort(function(a,b){ return byC[b].length-byC[a].length || a.localeCompare(b); })
+      .forEach(function(cn){
+        var r2=document.createElement("div"); r2.className="pickrow";
+        r2.innerHTML='<div class="picklab">'+esc(cn)+"</div>";
+        var c2=document.createElement("div"); c2.className="chips";
+        byC[cn].sort().forEach(function(d){
+          var b=document.createElement("button"); b.className="chip"; b.type="button";
+          b.setAttribute("aria-pressed", d===st.dest);
+          b.innerHTML=esc(city(d))+'<span class="cd">'+esc(d)+"</span>";
+          b.onclick=function(){ st.dest=d; render(); };
+          c2.appendChild(b);
+        });
+        r2.appendChild(c2); box.appendChild(r2);
+      });
   }
 
   function months(){
@@ -315,7 +321,7 @@
   function load(){
     api("GET","/api/starlux/prices",null,function(e,d){
       if(e){ toast("讀取失敗："+e,"err"); return; }
-      NAMES=d.names||{}; R={}; RT=(d.rt&&d.rt.routes)||{};
+      NAMES=d.names||{}; COUNTRY=d.countries||{}; R={}; RT=(d.rt&&d.rt.routes)||{};
       (d.fares||[]).forEach(function(f){
         var k=f.origin+"-"+f.destination;
         if(!R[k]) R[k]={};
@@ -325,10 +331,11 @@
       Object.keys(R).forEach(function(k){ all=all.concat(Object.keys(R[k])); });
       if(!all.length){ toast("還沒有掃描資料","err"); return; }
       all.sort(); span.from=all[0]; span.to=all[all.length-1];
-      if(!R[key()]){
-        var first=Object.keys(R).sort(function(a,b){
+      if(!st.origin || TWO.indexOf(st.origin)<0 || !R[key()]){
+        var twKeys=Object.keys(R).filter(function(k){ return TWO.indexOf(k.split("-")[0])>=0; });
+        var first=(twKeys.length?twKeys:Object.keys(R)).sort(function(a,b){
           return Object.keys(R[b]).length-Object.keys(R[a]).length; })[0];
-        var p=first.split("-"); st.origin=p[0]; st.dest=p[1];
+        var p=first.split("-"); st.origin=p[0]; st.dest=p[1]; st.dir="out";
       }
       renderAll(); render();
     });

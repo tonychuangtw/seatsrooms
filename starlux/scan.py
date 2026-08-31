@@ -86,12 +86,14 @@ def network(refresh=False):
         if age < 7 * 86400:
             return json.load(open(NET_CACHE))
     d = call(AIRPORTS)["data"]
-    routes, names = {}, {}
+    routes, names, countries = {}, {}, {}
     for region in d["regions"]:
         for country in region["countries"]:
+            cname = country.get("locName") or country.get("engName")
             for city in country["cities"]:
                 for ap in city["airports"]:
                     names[ap["code"]] = city.get("locName") or city.get("engName")
+                    countries[ap["code"]] = cname
                     if not ap.get("isOperatedByJX"):
                         continue
                     dests = sorted({a["waypoint"] for a in ap.get("available", [])
@@ -100,7 +102,7 @@ def network(refresh=False):
                                     and a.get("isSegmentExist")})
                     if dests:
                         routes[ap["code"]] = dests
-    net = {"routes": routes, "names": names,
+    net = {"routes": routes, "names": names, "countries": countries,
            "fetchedAt": datetime.date.today().isoformat()}
     json.dump(net, open(NET_CACHE, "w"), ensure_ascii=False, indent=1)
     return net
