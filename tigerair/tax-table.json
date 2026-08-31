@@ -50,6 +50,21 @@
    "tax": 1598,
    "sampleDate": "2026-12-23",
    "measuredAt": "2026-08-30"
+  },
+  "ICN-TPE": {
+   "tax": 1067,
+   "sampleDate": "2026-12-18",
+   "measuredAt": "2026-08-31"
+  },
+  "TPE-OKA": {
+   "tax": 900,
+   "sampleDate": "2026-12-21",
+   "measuredAt": "2026-08-31"
+  },
+  "TPE-ICN": {
+   "tax": 900,
+   "sampleDate": "2026-12-18",
+   "measuredAt": "2026-08-31"
   }
  }
 }

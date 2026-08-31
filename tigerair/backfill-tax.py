@@ -17,7 +17,6 @@ BASELINE = os.path.join(HERE, "baseline.json")
 FALLBACK_BASELINE = os.path.join(HERE, "baseline-20260830.json")
 TMP = os.path.join(HERE, ".backfill-last.json")
 STATE = os.path.join(HERE, ".backfill-state.json")
-MAX_BACKOFF_MIN = 240
 
 
 def load_table():
@@ -41,6 +40,11 @@ def load_state():
         return json.load(open(STATE))
     except Exception:
         return {"fails": 0, "nextTry": None}
+
+
+def profile_name(gen):
+    # gen 0/1 = 最初的 tigerair-tax；之後 tigerair-tax2、tigerair-tax3…
+    return "tigerair-tax" if gen <= 1 else f"tigerair-tax{gen}"
 
 
 def save_state(st):
@@ -81,6 +85,9 @@ def main():
         print(f"稅金表已完整（{len(table['routes'])} 條航向），沒有要補的")
         return
 
+    # 連續失敗時把佇列輪轉，避免固定卡在同樣的前幾條
+    off = st.get("fails", 0) * a.n % len(todo)
+    todo = todo[off:] + todo[:off]
     batch = todo[:a.n]
     args = []
     for k in batch:
@@ -93,7 +100,8 @@ def main():
                         "--delay", "25", "--out", TMP],
                        cwd=HERE, timeout=120 + 90 * len(batch), check=True,
                        capture_output=True,
-                       env={**os.environ, "TIGERAIR_CF_USER": "tigerair-tax"})
+                       env={**os.environ,
+                            "TIGERAIR_CF_USER": profile_name(st.get("profileGen", 0))})
     except subprocess.TimeoutExpired:
         print("fare-detail 逾時，這輪放棄")
     except subprocess.CalledProcessError as e:
@@ -131,14 +139,20 @@ def main():
           f"新增 {', '.join(added) if added else '無'}；"
           f"失敗 {', '.join(failed) if failed else '無'}")
 
+    gen = st.get("profileGen", 0)
     if added:
-        save_state({"fails": 0, "nextTry": None})
+        save_state({"fails": 0, "nextTry": None, "profileGen": gen})
     else:
+        # 整輪失敗幾乎都是 reCAPTCHA 分數燒掉，而且實測燒掉的 profile 隔一天也
+        # 回不來（08-31：tigerair-tax 退避到 4 小時仍連續失敗，換全新 profile 一次就過）
+        # → 直接換下一個 profile，退避只留短的
         fails = st.get("fails", 0) + 1
-        wait = min(MAX_BACKOFF_MIN, 30 * (2 ** (fails - 1)))
+        wait = min(60, 30 * (2 ** (fails - 1)))
         nxt = now + datetime.timedelta(minutes=wait)
-        save_state({"fails": fails, "nextTry": nxt.isoformat(timespec="seconds")})
-        print(f"整輪都失敗（第 {fails} 次），退避 {wait} 分鐘到 {nxt.strftime('%m-%d %H:%M')}")
+        save_state({"fails": fails, "nextTry": nxt.isoformat(timespec="seconds"),
+                    "profileGen": gen + 1})
+        print(f"整輪都失敗（第 {fails} 次），退避 {wait} 分鐘到 {nxt.strftime('%m-%d %H:%M')}，"
+              f"下輪換 profile {profile_name(gen + 1)}")
 
 
 if __name__ == "__main__":
