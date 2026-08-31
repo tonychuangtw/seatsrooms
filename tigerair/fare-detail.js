@@ -12,8 +12,12 @@ const BASE = 'http://localhost:9377';
 // 同一個名字（收尾會 DELETE 掉對方的 session），所以用途不同就給不同的固定名字。
 // --member：用已登入 TigerClub 的 `tigerclub` profile（信任裝置＋membership session 常駐），
 // GraphQL 帶 Authorization: Bearer <book_ibe_app_jwt>（JWT 12 小時效期，載入訂位頁會自動換新）
+// --jwt <token>：不依賴 profile cookie，直接帶指定 JWT 當會員查（查價 profile 可以自由輪替，
+// 分數跟登入身分脫鉤——tigerclub profile 的 reCAPTCHA 分數低，但 JWT 是 bearer 到哪都能用）
 const MEMBER = process.argv.includes('--member');
-const USER = process.env.TIGERAIR_CF_USER || (MEMBER ? 'tigerclub' : 'tigerair');
+const jwtIdx = process.argv.indexOf('--jwt');
+const JWT = jwtIdx >= 0 ? process.argv[jwtIdx + 1] : null;
+const USER = process.env.TIGERAIR_CF_USER || (MEMBER && !JWT ? 'tigerclub' : 'tigerair');
 const SITEKEY = '6LeAFC4hAAAAANDlMutLdP9CLqWaUKYxEUMPb5L2';
 
 async function cf(method, p, body) {
@@ -38,10 +42,12 @@ const IN_PAGE = args => `(async () => {
     'x-device-id': deviceId,
     'x-requested-with': 'XMLHttpRequest',
   };
-  if (member) {
+  if (member === 'cookie') {
     const m = document.cookie.match(/book_ibe_app_jwt=([^;]+)/);
     if (!m) return { error: 'no member jwt（tigerclub profile 沒登入或 JWT 沒換到）' };
     H['Authorization'] = 'Bearer ' + decodeURIComponent(m[1]);
+  } else if (member) {
+    H['Authorization'] = 'Bearer ' + member;
   }
   const j = async (url, opt) => {
     const r = await fetch(url, opt);
@@ -146,6 +152,8 @@ async function main() {
   if (delayIdx >= 0) { delay = parseInt(args[delayIdx + 1], 10) * 1000; args.splice(delayIdx, 2); }
   const mIdx = args.indexOf('--member');
   if (mIdx >= 0) args.splice(mIdx, 1);
+  const jIdx = args.indexOf('--jwt');
+  if (jIdx >= 0) args.splice(jIdx, 2);
   const retIdx = args.indexOf('--return');
   let returnDate = null;
   if (retIdx >= 0) { returnDate = args[retIdx + 1]; args.splice(retIdx, 2); }
@@ -185,7 +193,7 @@ async function main() {
       let r;
       try {
         const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: MEMBER }),
+          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: JWT || (MEMBER ? 'cookie' : null) }),
         });
         r = res.result;
       } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
@@ -196,7 +204,7 @@ async function main() {
         await openTab();
         try {
           const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: MEMBER }),
+            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: JWT || (MEMBER ? 'cookie' : null) }),
           });
           r = res.result;
         } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
