@@ -93,9 +93,14 @@ def verify(hits):
                             best = (tot, tp.get("fareAmount"), tp.get("taxAmount"),
                                     det.get("remainingSeat"), f.get("availableCount"),
                                     f"{seg.get('carrierCode','')}{seg.get('flightNumber','')}")
-        h["live"] = (f"即時：{best[5]} 含稅 NT${best[0]:,}"
-                     f"（票價 {best[1]:,}＋稅 {best[2]:,}）剩 {best[3]} 位／此價 {best[4]} 張"
-                     if best else "即時查詢無可售艙位")
+        if best:
+            h["live"] = (f"官網即時報價：{best[5]} 含稅 NT${best[0]:,}"
+                         f"（票價 {best[1]:,}＋稅 {best[2]:,}）剩 {best[3]} 位／此價 {best[4]} 張")
+            # 海外出發的日曆價是快取＋匯率換算，常跟即時報價對不上；差超過 1% 就標出來
+            if best[1] and h.get("amount") and abs(best[1] - h["amount"]) > h["amount"] * 0.01:
+                h["live"] += f"\n  ⚠ 日曆價 {h['amount']:,} 是快取值已過時，以即時報價為準"
+        else:
+            h["live"] = "即時查詢無可售艙位"
 
 
 def main():
