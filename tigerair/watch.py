@@ -12,7 +12,7 @@ watchlist.json 一筆長這樣（threshold 比含稅總價、thresholdNet 比官
 
 state 檔記住每個 (航線,日期) 看過的最低價，同一個價格不會重複吵。
 """
-import argparse, json, os, subprocess, sys, time, urllib.request, urllib.error
+import argparse, datetime, json, os, subprocess, sys, time, urllib.request, urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -143,6 +143,55 @@ def main():
         except Exception as e:
             errors.append(f"{w['route']}: {e}")
             continue
+
+        # "nights": N 或 [min,max] → 來回組合監看：每個出發日取範圍內最便宜的
+        # 去+回組合（虎航來回=兩張單程相加，精確值），門檻比的是來回總價。
+        if w.get("nights"):
+            ns = w["nights"]
+            n_lo, n_hi = (ns, ns) if isinstance(ns, int) else (ns[0], ns[1])
+            ret_until = (datetime.date.fromisoformat(w["until"])
+                         + datetime.timedelta(days=n_hi)).isoformat()
+            try:
+                back = {r["date"]: r["amount"]
+                        for r in daily_prices(d, o, w["since"], ret_until)}
+            except Exception as e:
+                errors.append(f"{d}-{o}: {e}")
+                continue
+            t2 = tax.get(f"{d}-{o}")
+            tax_both = (t + t2) if (t is not None and t2 is not None) else None
+            for r in rows:
+                dep = datetime.date.fromisoformat(r["date"])
+                best = None
+                for n in range(n_lo, n_hi + 1):
+                    rd = (dep + datetime.timedelta(days=n)).isoformat()
+                    if rd in back:
+                        tot = r["amount"] + back[rd]
+                        if best is None or tot < best[0]:
+                            best = (tot, rd, n, back[rd])
+                if best is None:
+                    continue
+                net, rd, n, ret_amt = best
+                k = f"rt|{w['route']}|{r['date']}"
+                prev = state.get(k, {}).get("low")
+                improved = prev is None or net < prev
+                total = net + tax_both if tax_both is not None else None
+                thr, thr_net = w.get("threshold"), w.get("thresholdNet")
+                cheap = thr_net is not None and net <= thr_net
+                if not cheap and thr is not None:
+                    cheap = (total if total is not None else net) <= thr
+                cheap = cheap and improved
+                newlow = (not w.get("noNewLow") and prev is not None and net < prev
+                          and net <= w.get("newLowMax", 0))
+                if cheap or newlow:
+                    hits.append({"w": w, "date": r["date"], "amount": net,
+                                 "total": total, "tax": tax_both, "prev": prev, "rt": True,
+                                 "combo": f"去 {r['date']} 回 {rd}（{n}晚）{r['amount']:,}＋{ret_amt:,}",
+                                 "why": "來回門檻" if cheap else "來回新低"})
+                if improved:
+                    state[k] = {"low": net, "ts": int(time.time())}
+            time.sleep(0.3)
+            continue
+
         for r in rows:
             k = f"{w['route']}|{r['date']}"
             prev = state.get(k, {}).get("low")
@@ -200,14 +249,16 @@ def main():
             extra[h["w"]["route"]] = extra.get(h["w"]["route"], 0) + 1
     hits = kept
     if a.verify:
-        verify(hits[:a.verify])
+        verify([h for h in hits if not h.get("rt")][:a.verify])
     lines = ["🐯 虎航降價"]
     for h in hits[:25]:
         w = h["w"]
+        rt_tag = "來回 " if h.get("rt") else ""
         price = (f"{h['total']:,} 含稅" if h["total"] is not None
                  else f"{h['amount']:,} 未稅")
         was = f"（原 {h['prev']:,} 未稅）" if h["prev"] is not None else ""
-        lines.append(f"{w['route']} {h['date']}　NT${price}　[{h['why']}]{was}"
+        lines.append(f"{w['route']} {rt_tag}{h['date']}　NT${price}　[{h['why']}]{was}"
+                     + (f"\n  {h['combo']}" if h.get("combo") else "")
                      + (f"\n  {h['live']}" if h.get("live") else "")
                      + (f"\n  {w['note']}" if w.get("note") else ""))
     if len(hits) > 25:
