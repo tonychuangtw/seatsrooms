@@ -55,6 +55,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=2, help="這輪最多量幾條")
     ap.add_argument("--stale", type=int, default=0, help="超過幾天沒量就重量（0=不重量）")
+    ap.add_argument("--stale-before", metavar="YYYY-MM-DD", default=None,
+                    help="measuredAt 早於這天的重量（固定日期,不隨今天漂移;量完自動變 no-op。"
+                         "用途:2026-09-01 台灣機場服務費調漲,舊值全要重量）")
     ap.add_argument("--now", action="store_true", help="忽略退避時間,立刻試一輪")
     a = ap.parse_args()
 
@@ -81,6 +84,13 @@ def main():
         cutoff = (today - datetime.timedelta(days=a.stale)).isoformat()
         todo += [k for k, v in table["routes"].items()
                  if k in dates and v.get("measuredAt", "") < cutoff]
+    if a.stale_before:
+        stale = [k for k, v in table["routes"].items()
+                 if k in dates and k not in todo
+                 and v.get("measuredAt", "") < a.stale_before]
+        # 台灣出發的排前面：機場服務費調漲只影響台灣出發，海外出發的舊值還算準
+        tw = ("TPE", "KHH", "RMQ", "TNN")
+        todo += sorted(stale, key=lambda k: (not k.startswith(tw), k))
     if not todo:
         print(f"稅金表已完整（{len(table['routes'])} 條航向），沒有要補的")
         return

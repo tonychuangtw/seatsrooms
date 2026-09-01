@@ -1002,6 +1002,8 @@
     if(r.cashTwd)milesHtml+='<div class="cpm'+(vtier?" good":"")+'">現金最低 NT$'+Number(r.cashTwd).toLocaleString()+(r.cpm?" · 每哩 "+r.cpm.toFixed(2):"")+"</div>";
     // 星宇官網同日含稅價：Google 給的是「當天最便宜的任一家」,這個是「星宇自己賣多少」
     if(r.jxCashTwd)milesHtml+='<div class="cpm">星宇官網同日 NT$'+Number(r.jxCashTwd).toLocaleString()+"</div>";
+    // 華航官網同日現金價(scout farewire);中國出發的隱含匯率偏離市場,標僅供參考
+    if(r.ciCashTwd)milesHtml+='<div class="cpm">華航官網同日 NT$'+Number(r.ciCashTwd).toLocaleString()+(r.ciCashCur==="CNY"?"（僅供參考）":"")+"</div>";
     // 餘額比對：有填該計畫餘額且哩程數字可解析時,標夠不夠開(以每人所需哩程計)
     var bpk=progKeyOf(r);
     if(r.status==="available"&&bpk&&BAL[bpk]&&BAL[bpk].miles!=null){
