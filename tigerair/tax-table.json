@@ -122,9 +122,9 @@
    "measuredAt": "2026-08-31"
   },
   "KHH-DAD": {
-   "tax": 900,
+   "tax": 1200,
    "sampleDate": "2026-12-19",
-   "measuredAt": "2026-08-31"
+   "measuredAt": "2026-09-01"
   },
   "TPE-KMI": {
    "tax": 900,
@@ -207,9 +207,9 @@
    "measuredAt": "2026-08-31"
   },
   "KHH-FUK": {
-   "tax": 800,
+   "tax": 1100,
    "sampleDate": "2026-12-15",
-   "measuredAt": "2026-08-31"
+   "measuredAt": "2026-09-01"
   },
   "FUK-TPE": {
    "tax": 1492,

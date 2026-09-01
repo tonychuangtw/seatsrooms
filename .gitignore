@@ -31,3 +31,7 @@ starlux/mfm.json
 starlux/rt*.json
 tigerair/history/
 starlux/history/
+tigerair/member-state.json
+tigerair/.member-jwt.json
+tigerair/.member-last.json
+tigerair/.tclogin-tab
