@@ -212,5 +212,25 @@
   "Y3TWNEA",
   "Y2TWNEA",
   "Y1TWNEA"
+ ],
+ "TPE-DPS|eco": [
+  "Y3TWSEA",
+  "Y2TWSEA",
+  "Y1TWSEA"
+ ],
+ "RMQ-NGO|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "KHH-OKA|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
+ ],
+ "KHH-UKB|eco": [
+  "Y3TWNEA",
+  "Y2TWNEA",
+  "Y1TWNEA"
  ]
 }

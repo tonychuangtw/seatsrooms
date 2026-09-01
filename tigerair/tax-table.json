@@ -415,6 +415,41 @@
    "tax": 1100,
    "sampleDate": "2026-12-15",
    "measuredAt": "2026-08-31"
+  },
+  "TPE-CTS": {
+   "tax": 1100,
+   "sampleDate": "2026-12-15",
+   "measuredAt": "2026-08-31"
+  },
+  "TPE-FKS": {
+   "tax": 1200,
+   "sampleDate": "2026-12-18",
+   "measuredAt": "2026-08-31"
+  },
+  "TPE-HKT": {
+   "tax": 1258,
+   "sampleDate": "2026-09-29",
+   "measuredAt": "2026-08-31"
+  },
+  "KHH-NRT": {
+   "tax": 1100,
+   "sampleDate": "2026-12-14",
+   "measuredAt": "2026-08-31"
+  },
+  "KHH-SDJ": {
+   "tax": 1200,
+   "sampleDate": "2026-12-19",
+   "measuredAt": "2026-08-31"
+  },
+  "TPE-HKD": {
+   "tax": 1200,
+   "sampleDate": "2026-12-25",
+   "measuredAt": "2026-08-31"
+  },
+  "KHH-CTS": {
+   "tax": 1200,
+   "sampleDate": "2026-12-28",
+   "measuredAt": "2026-08-31"
   }
  }
 }
