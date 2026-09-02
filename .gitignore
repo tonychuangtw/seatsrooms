@@ -43,3 +43,10 @@ airmacau/history/
 airmacau/scan-out.txt
 airmacau/scan-err.txt
 airmacau/baseline-rt.json
+hkexpress/baseline*.json
+hkexpress/network.json
+hkexpress/watch-state.json
+hkexpress/watchlist.json
+hkexpress/history/
+hkexpress/scan-out.txt
+hkexpress/scan-err.txt
