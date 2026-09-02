@@ -29,11 +29,15 @@ button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
 .pause{ background:transparent; color:var(--text2); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
 .scan{ background:transparent; color:var(--accent); border:1px solid var(--border); padding:5px 11px; font-size:0.82rem; }
 .scan:disabled{ opacity:.5; cursor:default; }
-.btn-row{ display:flex; gap:6px; flex-shrink:0; }
+.btn-row{ display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
 .msg{ font-size:0.88rem; color:var(--text2); min-height:1.2em; margin-top:8px; } .msg.err{ color:var(--bad); }
 .hidden{ display:none; }
 .entry{ border-bottom:1px solid var(--border); padding:10px 0; } .entry:last-child{ border-bottom:none; }
-.entry-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.entry-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.entry-head > :first-child{ min-width:0; flex:1 1 240px; }
+/* 手機：五顆按鈕塞不下就整排掉到下一行，不准把頁面撐寬（2026-09-02 Tony 截圖） */
+@media (max-width:640px){ .btn-row{ flex-basis:100%; justify-content:flex-start; } }
+body{ overflow-x:hidden; }
 .entry-name{ font-weight:700; } .entry-meta{ color:var(--text2); font-size:0.84rem; margin-top:2px; }
 .badge{ display:inline-block; padding:1px 8px; border-radius:99px; font-size:0.74rem; border:1px solid var(--border); color:var(--text2); }
 .badge.available{ background:var(--ok); color:#06281a; border:none; font-weight:700; }
