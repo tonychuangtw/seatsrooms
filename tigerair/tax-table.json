@@ -57,9 +57,9 @@
    "measuredAt": "2026-08-31"
   },
   "TPE-OKA": {
-   "tax": 900,
-   "sampleDate": "2026-12-21",
-   "measuredAt": "2026-08-31"
+   "tax": 1100,
+   "sampleDate": "2026-12-14",
+   "measuredAt": "2026-09-02"
   },
   "TPE-ICN": {
    "tax": 1100,
@@ -82,9 +82,9 @@
    "measuredAt": "2026-08-31"
   },
   "TPE-PUS": {
-   "tax": 800,
-   "sampleDate": "2026-12-13",
-   "measuredAt": "2026-08-31"
+   "tax": 1100,
+   "sampleDate": "2026-12-14",
+   "measuredAt": "2026-09-02"
   },
   "OKA-KHH": {
    "tax": 1220,
@@ -177,9 +177,9 @@
    "measuredAt": "2026-08-31"
   },
   "TPE-OIT": {
-   "tax": 800,
-   "sampleDate": "2026-12-16",
-   "measuredAt": "2026-08-31"
+   "tax": 1200,
+   "sampleDate": "2026-12-19",
+   "measuredAt": "2026-09-02"
   },
   "TPE-ISG": {
    "tax": 1200,
@@ -197,9 +197,9 @@
    "measuredAt": "2026-08-31"
   },
   "TPE-OKJ": {
-   "tax": 800,
-   "sampleDate": "2026-12-14",
-   "measuredAt": "2026-08-31"
+   "tax": 1100,
+   "sampleDate": "2026-12-15",
+   "measuredAt": "2026-09-02"
   },
   "TPE-FUK": {
    "tax": 1100,
@@ -358,8 +358,8 @@
   },
   "TPE-NRT": {
    "tax": 1100,
-   "sampleDate": "2026-12-13",
-   "measuredAt": "2026-08-31"
+   "sampleDate": "2026-12-14",
+   "measuredAt": "2026-09-02"
   },
   "NRT-KHH": {
    "tax": 1686,
@@ -384,12 +384,12 @@
   "TPE-KMQ": {
    "tax": 1100,
    "sampleDate": "2026-12-17",
-   "measuredAt": "2026-08-31"
+   "measuredAt": "2026-09-02"
   },
   "TPE-SDJ": {
    "tax": 1100,
-   "sampleDate": "2026-12-15",
-   "measuredAt": "2026-08-31"
+   "sampleDate": "2026-12-17",
+   "measuredAt": "2026-09-02"
   },
   "TPE-KCZ": {
    "tax": 1100,
@@ -398,8 +398,8 @@
   },
   "TPE-NGO": {
    "tax": 1100,
-   "sampleDate": "2026-12-14",
-   "measuredAt": "2026-08-31"
+   "sampleDate": "2026-12-17",
+   "measuredAt": "2026-09-02"
   },
   "TPE-AXT": {
    "tax": 1200,
