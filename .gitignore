@@ -35,3 +35,10 @@ tigerair/member-state.json
 tigerair/.member-jwt.json
 tigerair/.member-last.json
 tigerair/.tclogin-tab
+airmacau/baseline*.json
+airmacau/network.json
+airmacau/watch-state.json
+airmacau/watchlist.json
+airmacau/history/
+airmacau/scan-out.txt
+airmacau/scan-err.txt
