@@ -16,7 +16,7 @@ out_path = sys.argv[3] if len(sys.argv) > 3 else "airmacau-prices.html"
 CITY = NET.get("names", {})
 COUNTRY = NET.get("countries", {})
 def country(code):
-    return "HUB" if code == "MFM" else COUNTRY.get(code, "?")
+    return COUNTRY.get(code, "?")
 # 官網 nationalityId 不是乾淨 ISO 碼（THA/MALA/kz 都有），照實列
 FLAG = {"TW": "台灣", "CN": "中國大陸", "JP": "日本", "KR": "韓國", "THA": "泰國",
         "VN": "越南", "SG": "新加坡", "MALA": "馬來西亞", "PH": "菲律賓", "ID": "印尼",
@@ -348,7 +348,7 @@ const DATA = __PAYLOAD__;
 const R = DATA.routes;
 const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
-const state = { origin:'KHH', dest:'CJU', dir:'out', nights:0 };
+const state = { origin:'MFM', dest:'TPE', dir:'out', nights:0 };
 
 function key(){ return state.dir==='out' ? state.origin+'-'+state.dest : state.dest+'-'+state.origin; }
 function addDays(iso,n){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
@@ -398,10 +398,10 @@ function buildDests(){
     const v = R[state.origin+'-'+d];
     (byC[v.dc] = byC[v.dc] || []).push(d);
   });
-  const names = {TW:'台灣',CN:'中國大陸',JP:'日本',KR:'韓國',THA:'泰國',VN:'越南',SG:'新加坡',MALA:'馬來西亞',PH:'菲律賓',ID:'印尼',MO:'澳門',HK:'香港',RU:'俄羅斯',MN:'蒙古',AE:'阿聯',kz:'哈薩克'};
-  ['JP','KR','TH','VN'].filter(c=>byC[c]).forEach(c=>{
+  const names = {TW:'台灣',CN:'中國大陸',JP:'日本',KR:'韓國',THA:'泰國',VN:'越南',SG:'新加坡',MALA:'馬來西亞',PH:'菲律賓',ID:'印尼',MO:'澳門',HK:'香港',RU:'俄羅斯',MN:'蒙古',AE:'阿聯',kz:'哈薩克',FR:'法國',IT:'義大利',ES:'西班牙',DE:'德國',GB:'英國',PT:'葡萄牙',BE:'比利時',EG:'埃及',TR:'土耳其'};
+  Object.keys(byC).sort((a,b)=>byC[b].length-byC[a].length||String(a).localeCompare(b)).forEach(c=>{
     const row=document.createElement('div'); row.className='grp';
-    row.innerHTML='<div class="grp-label">'+names[c]+'</div>';
+    row.innerHTML='<div class="grp-label">'+(names[c]||'其他')+'</div>';
     const chips=document.createElement('div'); chips.className='chips';
     byC[c].forEach(d=>{
       const v=R[state.origin+'-'+d];
