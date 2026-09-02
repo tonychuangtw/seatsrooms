@@ -35,8 +35,20 @@ for k, days in routes.items():
 
 all_dates = sorted({dt for v in data.values() for dt in v["days"]})
 scanned = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M") + " 台北"
+CARRIERS = ['CI', 'AE']
+# 機型表（aircraft/aircraft-map.json，GF 抽樣）：只取本航空的班號
+AC = {}
+try:
+    _acm = json.load(open(__file__.rsplit("/", 1)[0] + "/../aircraft/aircraft-map.json"))
+    for _k, _v in _acm.items():
+        _rows = [{"fn": fn, "aircraft": x["aircraft"], "pitch": x.get("pitch"), "seen": x.get("lastSeen")}
+                 for fn, x in _v.items() if not fn.startswith("__") and fn[:2] in CARRIERS]
+        if _rows:
+            AC[_k] = sorted(_rows, key=lambda r: r["fn"])
+except Exception:
+    pass
 payload = json.dumps({"routes": data, "from": all_dates[0], "to": all_dates[-1],
-                      "scanned": scanned,
+                      "scanned": scanned, "ac": AC,
                       "rt": {k: {"go": v["go"], "ret": v["ret"]} for k, v in RT.items()}},
                      ensure_ascii=False, separators=(",", ":"))
 
@@ -303,6 +315,11 @@ const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
 const first = Object.keys(R).filter(k=>R[k].oc==='TW').sort((a,b)=>Object.keys(R[b].days).length-Object.keys(R[a].days).length)[0].split('-');
 const state = { origin:first[0], dest:first[1], dir:'out', nights:0 };
+const AC = DATA.ac || {};   // 航線→[{fn,aircraft,pitch,seen}]，GF 抽樣（aircraft/sample.js）
+function acHtml(k){ const a=AC[k]; if(!a||!a.length) return '';
+  const seen=a.map(x=>x.seen).sort().pop();
+  const items=a.map(x=>'<b>'+x.fn+'</b> '+x.aircraft+(x.pitch?'<small style="opacity:.7">（座距 '+x.pitch+'cm）</small>':'')).join(' · ');
+  return '<div class="stat" style="flex:1 1 100%"><div class="lab">執飛機型 · GF 抽樣 '+(seen||'').slice(5).replace('-','/')+'</div><div class="val" style="font-size:15px;line-height:1.5;font-family:inherit">'+items+'</div><div class="note">機型跟航線班號綁定，換季才會變；抽樣日沒飛的班次不會列出</div></div>'; }
 const RT = DATA.rt || {};
 const addDays = (iso,n) => { const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
 function rtDays(k,n){ const v=RT[k]; if(!v) return null; const out={}; let any=false;
@@ -401,6 +418,7 @@ function render(){
   ].map(([lab,val,note,hi2])=>
     '<div class="stat'+(hi2?' hi':'')+'"><div class="lab">'+lab+'</div><div class="val">'+
     (lab==='有票天數'? val : fmt(val))+'</div><div class="note">'+note+'</div></div>').join('');
+  sum.insertAdjacentHTML('beforeend', acHtml(key()));
 
   // 月曆
   const months = [...new Set(Object.keys(days).map(d=>d.slice(0,7)))].sort();

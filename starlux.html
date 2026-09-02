@@ -148,6 +148,13 @@
   var WD=["日","一","二","三","四","五","六"];
   var R={}, RT={}, NAMES={}, COUNTRY={}, span={from:null,to:null};
   var st={origin:null,dest:null,dir:"out",nights:0};   // nights 0 = 單程
+  var ACMAP={};   // /api/aircraft/map：航線→班號→機型／座椅間距（GF 抽樣，換季才變）
+  var CARRIERS=["JX"];
+  function acHtml(k){ var m=ACMAP[k]; if(!m) return ""; var rows=[];
+    Object.keys(m).forEach(function(fn){ if(fn.indexOf("__")===0) return; if(CARRIERS.indexOf(fn.slice(0,2))<0) return; var x=m[fn];
+      rows.push('<b>'+esc(fn)+'</b> '+esc(x.aircraft)+(x.pitch?'<small style="opacity:.7">（座距 '+x.pitch+'cm）</small>':'')); });
+    if(!rows.length) return "";
+    return '<div class="st" style="flex:1 1 100%"><div class="l">執飛機型（GF 抽樣，換季才變）</div><div class="v" style="font-size:0.92rem;line-height:1.5">'+rows.sort().join(" · ")+'</div></div>'; }
   var TWO=["TPE","RMQ","KHH","TNN"];
 
   function addDays(iso,n){ var d=new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+n);
@@ -250,6 +257,7 @@
       return '<div class="st'+(s[3]?" good":"")+'"><div class="l">'+esc(s[0])+
         '</div><div class="v">'+esc(s[1])+'</div><div class="l">'+esc(s[2])+"</div></div>";
     }).join("");
+    $("stats").insertAdjacentHTML("beforeend", acHtml(key()));
 
     $("cals").innerHTML=months().map(function(ym){
       var p=ym.split("-"), y=+p[0], m=+p[1];
@@ -341,6 +349,7 @@
         var p=first.split("-"); st.origin=p[0]; st.dest=p[1]; st.dir="out";
       }
       renderAll(); render();
+      api("GET","/api/aircraft/map",null,function(e2,d2){ if(!e2&&d2){ ACMAP=d2; render(); } });
     });
   }
 
