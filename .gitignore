@@ -42,3 +42,4 @@ airmacau/watchlist.json
 airmacau/history/
 airmacau/scan-out.txt
 airmacau/scan-err.txt
+airmacau/baseline-rt.json

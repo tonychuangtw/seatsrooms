@@ -11,6 +11,11 @@ import json, sys, datetime, collections
 
 fares = json.load(open(sys.argv[1]))
 NET = json.load(open(sys.argv[2]))
+try:
+    RTX = json.load(open(sys.argv[4] if len(sys.argv) > 4 else
+                         __file__.rsplit("/", 1)[0] + "/baseline-rt.json"))
+except Exception:
+    RTX = {}
 out_path = sys.argv[3] if len(sys.argv) > 3 else "airmacau-prices.html"
 
 CITY = NET.get("names", {})
@@ -77,7 +82,8 @@ today = datetime.date.today().isoformat()
 scanned = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M") + " 台北"
 
 payload = json.dumps({"routes": data, "from": all_dates[0], "to": all_dates[-1],
-                      "scanned": scanned}, ensure_ascii=False, separators=(",", ":"))
+                      "scanned": scanned, "rtx": RTX},
+                     ensure_ascii=False, separators=(",", ":"))
 
 HTML = """<title>澳門航空價格日曆</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -291,7 +297,7 @@ footer p{margin:0 0 6px; max-width:78ch}
     <button class="chip" data-n="5">來回 6天5夜</button>
     <label class="chip" style="gap:6px">自訂 <input id="nights-in" type="number" min="1" max="60" value="7" style="width:54px;font:inherit;padding:1px 4px"> 晚</label>
   </div>
-  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">來回＝兩張單程相加的<b>估算值</b>（澳航是否有來回折扣未驗證）；含稅一樣是估算。下訂前以官網為準。</p>
+  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px"><b>澳航來回票比兩張單程相加便宜 8~18%</b>（9/2 實測，KHH⇄MFM 中位數 −18%）。台灣⇄澳門且出發日在近 30 天內的格子用的是<b>官網來回日曆的真實來回價</b>（標 ✓）；其餘（遠期／轉機航線）仍是兩張單程相加的<b>上限估</b>，實際訂可能更便宜。含稅一律為估算，下訂前以官網為準。</p>
 </section>
 
 <section class="board" id="combo-card" style="display:none">
@@ -348,6 +354,7 @@ const DATA = __PAYLOAD__;
 const R = DATA.routes;
 const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
+const RTX = DATA.rtx || {};   // 官網來回矩陣（近30天，真·來回價，比單程相加便宜 8~18%）
 const state = { origin:'MFM', dest:'TPE', dir:'out', nights:0 };
 
 function key(){ return state.dir==='out' ? state.origin+'-'+state.dest : state.dest+'-'+state.origin; }
@@ -359,7 +366,9 @@ function rtView(k,n){
   if(!go||!back) return null;
   const days={}, det={}; let any=false;
   for(const d of Object.keys(go.days)){ const rd=addDays(d,n), r=back.days[rd];
-    if(r!==undefined){ days[d]=go.days[d]+r; det[d]={g:go.days[d],r,rd}; any=true; } }
+    const ex = RTX[k] ? RTX[k][d+'|'+rd] : undefined;
+    if(ex!==undefined){ days[d]=ex; det[d]={g:go.days[d],r:(r===undefined?null:r),rd,ex:true}; any=true; }
+    else if(r!==undefined){ days[d]=go.days[d]+r; det[d]={g:go.days[d],r,rd}; any=true; } }
   if(!any) return null;
   return {days, rt:det, tax:(go.tax!=null&&back.tax!=null)?go.tax+back.tax:null};
 }
@@ -499,7 +508,9 @@ function render(){
     const we = (wd===0||wd===6)?' we':'';
     if(rt){ const x=v.rt[d];
       return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
-        '<td class="l num">'+x.rd+'</td><td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>'+
+        '<td class="l num">'+x.rd+'</td>'+
+        (x.ex? '<td class="num" colspan="2">官網來回價 ✓</td>'
+             : '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>')+
         '<td class="num">'+(tax==null?'未量':fmt(tax))+'</td>'+
         '<td class="num tot">'+(tax==null?'—':fmt(p+tax))+'</td></tr>'; }
     return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
@@ -520,12 +531,16 @@ function findCombos(){
   const out=[];
   for(const d of Object.keys(go.days)){ if(ym && !d.startsWith(ym)) continue;
     for(let n=mn;n<=mx;n++){ const rd=addDays(d,n), r=back.days[rd];
-      if(r!==undefined) out.push({d,rd,n,g:go.days[d],r,t:go.days[d]+r}); } }
+      const ex = RTX[k] ? RTX[k][d+'|'+rd] : undefined;
+      if(ex!==undefined) out.push({d,rd,n,g:null,r:null,t:ex,ex:true});
+      else if(r!==undefined) out.push({d,rd,n,g:go.days[d],r,t:go.days[d]+r}); } }
   out.sort((a,b)=>a.t-b.t||a.d.localeCompare(b.d));
   body.innerHTML = out.length ? out.slice(0,15).map(x=>{
     const wd=new Date(x.d+'T00:00:00Z').getUTCDay(), we=(wd===0||wd===6)?' we':'';
     return '<tr><td class="l num'+we+'">'+x.d+'（'+WD[wd]+'）</td><td class="l num">'+x.rd+'</td>'+
-      '<td class="num">'+x.n+'</td><td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>'+
+      '<td class="num">'+x.n+'</td>'+
+      (x.ex? '<td class="num" colspan="2">官網來回價 ✓</td>'
+           : '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>')+
       '<td class="num">'+fmt(x.t)+'</td><td class="num tot">'+(tax==null?'—':fmt(x.t+tax))+'</td></tr>';
   }).join('') : '<tr><td colspan="7" class="l">這個範圍沒有可組合的日期</td></tr>';
 }
