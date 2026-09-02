@@ -2,9 +2,9 @@
  "note": "taxAmount 實測值，單位 TWD，單人單程。台灣出發 2026-09-01 起機場服務費調漲需重量。",
  "routes": {
   "AXT-TPE": {
-   "tax": 1068,
-   "sampleDate": "2026-12-20",
-   "measuredAt": "2026-08-30"
+   "tax": 1023,
+   "sampleDate": "2026-12-13",
+   "measuredAt": "2026-09-02"
   },
   "CJU-KHH": {
    "tax": 946,
@@ -297,9 +297,9 @@
    "measuredAt": "2026-09-02"
   },
   "TPE-YGJ": {
-   "tax": 800,
-   "sampleDate": "2026-12-14",
-   "measuredAt": "2026-08-31"
+   "tax": 1200,
+   "sampleDate": "2026-12-18",
+   "measuredAt": "2026-09-02"
   },
   "KHH-KMJ": {
    "tax": 1100,
