@@ -1,57 +1,25 @@
 #!/usr/bin/env python3
-"""把香港快運掃描結果做成一頁「每日價格日曆」。
+"""把華航現金票掃描結果做成一頁「每日價格日曆」。
 
   python3 generate-page.py baseline.json network.json out.html
 
-價格是未稅票價、海外出發已換算台幣（twd 欄）；含稅為 GF 校準估算（UO 稅超重：
-台灣出發 +2,370、香港出發 +2,600~2,850，跨日期極穩定）。
-來回＝兩張單程相加（LCC 慣例，是否有來回折扣未驗證）。
+華航 airTRFX 日曆給的就是含稅總價（經濟艙最低），沒有稅金欄位；海外出發已換算台幣（twd）。
+來回沒有資料源（histogram 只有單程），本頁只做單程。
 """
 import json, sys, datetime, collections
 
 fares = json.load(open(sys.argv[1]))
 NET = json.load(open(sys.argv[2]))
-RTX = {}   # UO 沒找到來回矩陣 API；來回=兩張單程相加
-out_path = sys.argv[3] if len(sys.argv) > 3 else "hkexpress-prices.html"
-
 CITY = NET.get("names", {})
 COUNTRY = NET.get("countries", {})
-def country(code):
-    return COUNTRY.get(code, "?")
-# 官網 nationalityId 不是乾淨 ISO 碼（THA/MALA/kz 都有），照實列
-FLAG = {"TW": "台灣", "CN": "中國大陸", "JP": "日本", "KR": "韓國", "THA": "泰國",
-        "VN": "越南", "SG": "新加坡", "MALA": "馬來西亞", "PH": "菲律賓", "ID": "印尼",
-        "MO": "澳門", "HK": "香港", "HUB": "澳門", "RU": "俄羅斯", "MN": "蒙古",
-        "AE": "阿聯", "kz": "哈薩克"}
+out_path = sys.argv[3] if len(sys.argv) > 3 else "chinaairlines-prices.html"
+try:
+    RT = json.load(open(sys.argv[4] if len(sys.argv) > 4 else "baseline-rt.json"))["routes"]
+except Exception:
+    RT = {}
 
-# ── 稅費估算（2026-09-02 用 Google Flights 同日澳航含稅價回推）────────────
-# 方法：每航向取 3 個分散日期，diff = GF澳航最低含稅 − 官網日曆未稅，取「最小」
-# diff 當稅（艙等錯配只會把 diff 灌高不會壓低）。校準原始數據存 scratchpad nx-calib2-out.json。
-TAX_MEASURED = {
-    "TPE-HKG": 2370, "KHH-HKG": 2370, "RMQ-HKG": 2370,
-    "HKG-TPE": 2800, "HKG-KHH": 2800, "HKG-RMQ": 2800,
-    "HKG-NRT": 2800, "HKG-ICN": 2800, "HKG-BKK": 2850, "HKG-DAD": 2800,
-}
-TW = {"TPE", "KHH", "RMQ", "TNN"}
-def _leg_tax(o, d):
-    k = f"{o}-{d}"
-    if k in TAX_MEASURED:
-        return TAX_MEASURED[k]
-    if o in TW and d == "HKG":
-        return 2400
-    if o == "HKG":
-        return 2800
-    return None   # 海外→香港（日韓東南亞出發）沒校準
-def est_tax(o, d):
-    if o == "HKG" or d == "HKG":
-        return _leg_tax(o, d)
-    # 經香港轉機：兩段相加，扣轉機不重複收的機場費（粗估 700）
-    a, b = _leg_tax(o, "HKG"), _leg_tax("HKG", d)
-    if a is None or b is None:
-        return None
-    return a + b - 200
+TW = ("TPE", "RMQ", "KHH", "TNN")
 
-tax = {}
 routes = collections.defaultdict(dict)
 for r in fares:
     routes[f"{r['origin']}-{r['destination']}"][r["date"]] = r.get("twd") or r["amount"]
@@ -59,23 +27,20 @@ for r in fares:
 data = {}
 for k, days in routes.items():
     o, d = k.split("-")
-    data[k] = {
-        "o": o, "d": d,
-        "on": CITY.get(o, o), "dn": CITY.get(d, d),
-        "oc": country(o), "dc": country(d),
-        "tax": est_tax(o, d),
-        "days": days,
-    }
+    data[k] = {"o": o, "d": d,
+               "on": CITY.get(o, o), "dn": CITY.get(d, d),
+               "oc": "TW" if o in TW else "OTHER",
+               "dc": COUNTRY.get(d, "其他"),
+               "tax": None, "days": days}
 
 all_dates = sorted({dt for v in data.values() for dt in v["days"]})
-today = datetime.date.today().isoformat()
 scanned = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M") + " 台北"
-
 payload = json.dumps({"routes": data, "from": all_dates[0], "to": all_dates[-1],
-                      "scanned": scanned, "rtx": RTX},
+                      "scanned": scanned,
+                      "rt": {k: {"go": v["go"], "ret": v["ret"]} for k, v in RT.items()}},
                      ensure_ascii=False, separators=(",", ":"))
 
-HTML = """<title>香港快運價格日曆</title>
+HTML = """<title>華航價格日曆</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
@@ -259,10 +224,9 @@ footer p{margin:0 0 6px; max-width:78ch}
 
 <div class="wrap">
 <header>
-  <p class="kicker">HK Express · 全航線每日最低價</p>
-  <h1>香港快運價格日曆</h1>
-  <p class="sub">官網價格日曆是「單人未稅單程」最低價（海外出發已換算台幣），本頁的<b>含稅總價是估算值</b>（用 Google Flights 同日 UO 含稅價校準，UO 稅費很重：台灣出發約 +2,370、香港出發約 +2,800）。台灣出發到香港以外的目的地＝<b>經香港轉機</b>的行程。
-     艙等以最陽春的 tigerLight 計；行李、選位、餐點另外加。</p>
+  <p class="kicker">China Airlines · 台灣出發／抵達每日最低價</p>
+  <h1>華航價格日曆</h1>
+  <p class="sub">華航官網「探索最佳票價」背後的 airTRFX 資料：每天<b>經濟艙最低含稅總價</b>（單人單程）。海外出發以當地幣別報價，已換算台幣。這是快取的最低價，不是即時報價；下訂前以官網為準。</p>
   <div class="meta">
     <span><b>掃描時間</b> __SCANNED__</span>
     <span><b>涵蓋</b> __FROM__ → __TO__</span>
@@ -280,26 +244,21 @@ footer p{margin:0 0 6px; max-width:78ch}
     <button class="chip" id="btn-ret" aria-pressed="false">回程</button>
   </div>
   <div class="dirtoggle" id="modechips" style="flex-wrap:wrap;align-items:center">
-    <button class="chip" data-n="0" aria-pressed="true">單程</button>
-    <button class="chip" data-n="2">來回 3天2夜</button>
-    <button class="chip" data-n="3">來回 4天3夜</button>
-    <button class="chip" data-n="4">來回 5天4夜</button>
-    <button class="chip" data-n="5">來回 6天5夜</button>
-    <label class="chip" style="gap:6px">自訂 <input id="nights-in" type="number" min="1" max="60" value="7" style="width:54px;font:inherit;padding:1px 4px"> 晚</label>
+    <button class="chip" data-n="0" aria-pressed="true">單程（含稅最低價）</button>
   </div>
-  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">來回＝兩張單程相加（LCC 慣例通常無來回折扣，但未實測驗證）；含稅一律為估算。下訂前以官網為準。</p>
+  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">來回總價 = 去程段 ＋ 回程段（已用官網全程總價驗證）。回程段依「最便宜去程艙等桶」估算：便宜的出發日算得準，貴的出發日可能略微樂觀幾百元；下訂前以官網為準。來回只掃台灣出發的航線。</p>
 </section>
 
 <section class="board" id="combo-card" style="display:none">
   <h2>找最便宜的去回組合</h2>
-  <div class="dirtoggle" style="flex-wrap:wrap;align-items:flex-end;border-top:0;margin-top:0;padding-top:0;gap:10px">
-    <label style="font-size:12.5px;color:var(--muted)">最少幾晚<br><input id="c-min" type="number" min="1" max="60" value="2" style="width:64px;font:inherit;padding:3px 6px"></label>
-    <label style="font-size:12.5px;color:var(--muted)">最多幾晚<br><input id="c-max" type="number" min="1" max="60" value="6" style="width:64px;font:inherit;padding:3px 6px"></label>
-    <label style="font-size:12.5px;color:var(--muted)">出發月份（留空＝全部）<br><input id="c-month" type="month" style="font:inherit;padding:3px 6px"></label>
-    <button class="chip" id="c-go" type="button">找</button>
+  <div class="chips" style="align-items:center;gap:10px">
+    <label>最少 <input id="c-min" type="number" min="1" max="60" value="2" style="width:54px;font:inherit"> 晚</label>
+    <label>最多 <input id="c-max" type="number" min="1" max="60" value="6" style="width:54px;font:inherit"> 晚</label>
+    <label>出發月 <input id="c-month" type="month" style="font:inherit"></label>
+    <button class="chip" id="c-go">找</button>
   </div>
   <div class="tblwrap" style="margin-top:12px"><table id="combo">
-    <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回未稅</th><th>含稅總價(估)</th></tr></thead>
+    <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回總價</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>
@@ -310,7 +269,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="board">
   <h2>這條航線最便宜的 20 天</h2>
   <div class="tblwrap"><table id="best">
-    <thead id="best-head"><tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅(估)</th><th>含稅總價(估)</th></tr></thead>
+    <thead id="best-head"><tr><th class="l">日期</th><th class="l">星期</th><th>含稅總價</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>
@@ -318,7 +277,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="allroutes">
   <h2>全航線最低價一覽</h2>
   <div class="tblwrap"><table id="all">
-    <thead><tr><th class="l">航線</th><th>未稅</th><th>＋稅(估)</th><th>含稅總價(估)</th><th class="l">最便宜那天</th></tr></thead>
+    <thead><tr><th class="l">航線</th><th>含稅總價</th><th class="l">最便宜那天</th></tr></thead>
     <tbody></tbody>
   </table></div>
   <div class="legend">
@@ -330,12 +289,10 @@ footer p{margin:0 0 6px; max-width:78ch}
 </section>
 
 <footer>
-  <p>資料來源：香港快運官網月曆 API（公開查詢，無需登入）。稅費為估算值：用 Google Flights
-     同日 UO 含稅價回推（每航向取多日期最小差值，跨日期極穩定）：台灣出發 +2,370、
-     香港出發 +2,600～2,850；經香港轉機＝兩段相加再扣轉機不重複的機場費（粗估 200，GF 抽驗 TPE→HAN 含稅 5,351）。
-     海外（日韓東南亞）→香港方向未校準，顯示未稅。UO 是廉航：未稅價很甜但稅費超重，比價一定看含稅欄。</p>
-  <p>台灣出發到香港以外的目的地都是<b>經香港轉機</b>的行程（官網直接賣聯程票）。
-     海外出發以當地幣別報價，已按匯率換算台幣；下訂前以官網即時報價為準。</p>
+  <p>資料來源：華航 flights.china-airlines.com 的 airTRFX 票價日曆（公開查詢，無需登入）。價格已含稅費、經濟艙最低；
+     每格是快取值（帶查詢時間），實際下訂以官網為準。航線表由候選清單探測而來，只列華航／華信自營或常態航點。</p>
+  <p>可訂期間約未來 12 個月，超出的月份官網會直接擋掉。價格隨時可能變動，
+     實際以官網下訂當下為準。</p>
 </footer>
 </div>
 
@@ -344,34 +301,26 @@ const DATA = __PAYLOAD__;
 const R = DATA.routes;
 const fmt = n => n.toLocaleString('en-US');
 const WD = ['日','一','二','三','四','五','六'];
-const RTX = DATA.rtx || {};   // 官網來回矩陣（近30天，真·來回價，比單程相加便宜 8~18%）
-const state = { origin:'HKG', dest:'TPE', dir:'out', nights:0 };
+const first = Object.keys(R).filter(k=>R[k].oc==='TW').sort((a,b)=>Object.keys(R[b].days).length-Object.keys(R[a].days).length)[0].split('-');
+const state = { origin:first[0], dest:first[1], dir:'out', nights:0 };
+const RT = DATA.rt || {};
+const addDays = (iso,n) => { const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+function rtDays(k,n){ const v=RT[k]; if(!v) return null; const out={}; let any=false;
+  for(const d of Object.keys(v.go)){ const rd=addDays(d,n), r=v.ret[rd]; if(r){ out[d]={t:v.go[d]+r,g:v.go[d],r:r,rd:rd}; any=true; } }
+  return any?out:null; }
+function curDays(){ const k=key();
+  if(state.nights>0){ const m=rtDays(k,state.nights); if(!m) return null;
+    const days={}; for(const d of Object.keys(m)) days[d]=m[d].t; return {days, rt:m}; }
+  return R[k] ? {days:R[k].days, rt:null} : null; }
 
 function key(){ return state.dir==='out' ? state.origin+'-'+state.dest : state.dest+'-'+state.origin; }
-function addDays(iso,n){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
-function retKey(k){ const p=k.split('-'); return p[1]+'-'+p[0]; }
-// 來回＝兩張單程相加（實測無折扣）
-function rtView(k,n){
-  const go=R[k], back=R[retKey(k)];
-  if(!go||!back) return null;
-  const days={}, det={}; let any=false;
-  for(const d of Object.keys(go.days)){ const rd=addDays(d,n), r=back.days[rd];
-    const ex = RTX[k] ? RTX[k][d+'|'+rd] : undefined;
-    if(ex!==undefined){ days[d]=ex; det[d]={g:go.days[d],r:(r===undefined?null:r),rd,ex:true}; any=true; }
-    else if(r!==undefined){ days[d]=go.days[d]+r; det[d]={g:go.days[d],r,rd}; any=true; } }
-  if(!any) return null;
-  return {days, rt:det, tax:(go.tax!=null&&back.tax!=null)?go.tax+back.tax:null};
-}
-function curView(){ const k=key();
-  if(state.nights>0) return rtView(k,state.nights);
-  return R[k] ? {days:R[k].days, rt:null, tax:R[k].tax} : null; }
 
 function buildGroups(){
   const box = document.getElementById('groups');
-  const origins = ['HKG','TPE','KHH','RMQ'];
+  const origins = ['TPE','RMQ','KHH','TNN'].filter(o=>Object.values(R).some(v=>v.o===o));
   const oRow = document.createElement('div');
   oRow.className = 'grp';
-  oRow.innerHTML = '<div class="grp-label">出發地</div>';
+  oRow.innerHTML = '<div class="grp-label">台灣</div>';
   const oChips = document.createElement('div'); oChips.className='chips';
   origins.forEach(o=>{
     const b=document.createElement('button'); b.className='chip'; b.dataset.o=o;
@@ -397,10 +346,9 @@ function buildDests(){
     const v = R[state.origin+'-'+d];
     (byC[v.dc] = byC[v.dc] || []).push(d);
   });
-  const names = {TW:'台灣',CN:'中國大陸',JP:'日本',KR:'韓國',THA:'泰國',TH:'泰國',MY:'馬來西亞',VN:'越南',SG:'新加坡',MALA:'馬來西亞',PH:'菲律賓',ID:'印尼',MO:'澳門',HK:'香港',RU:'俄羅斯',MN:'蒙古',AE:'阿聯',kz:'哈薩克',FR:'法國',IT:'義大利',ES:'西班牙',DE:'德國',GB:'英國',PT:'葡萄牙',BE:'比利時',EG:'埃及',TR:'土耳其'};
-  Object.keys(byC).sort((a,b)=>byC[b].length-byC[a].length||String(a).localeCompare(b)).forEach(c=>{
+  Object.keys(byC).sort((a,b)=>byC[b].length-byC[a].length||a.localeCompare(b)).forEach(c=>{
     const row=document.createElement('div'); row.className='grp';
-    row.innerHTML='<div class="grp-label">'+(names[c]||'其他')+'</div>';
+    row.innerHTML='<div class="grp-label">'+c+'</div>';
     const chips=document.createElement('div'); chips.className='chips';
     byC[c].forEach(d=>{
       const v=R[state.origin+'-'+d];
@@ -418,37 +366,35 @@ function render(){
   document.querySelectorAll('#groups > .grp:first-child .chip')
     .forEach(b=>b.setAttribute('aria-pressed', b.dataset.o===state.origin));
   buildDests();
+  document.getElementById('btn-out').setAttribute('aria-pressed', state.dir==='out');
+  document.getElementById('btn-ret').setAttribute('aria-pressed', state.dir==='ret');
+
   const rt = state.nights>0;
   if(rt) state.dir='out';
   document.getElementById('dirtoggle').style.display = rt?'none':'';
   document.getElementById('rtnote').style.display = rt?'':'none';
   document.getElementById('combo-card').style.display = rt?'':'none';
   document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.n===state.nights));
-  document.getElementById('btn-out').setAttribute('aria-pressed', state.dir==='out');
-  document.getElementById('btn-ret').setAttribute('aria-pressed', state.dir==='ret');
   document.getElementById('best-head').innerHTML = rt
-    ? '<tr><th class="l">出發</th><th class="l">星期</th><th class="l">回程</th><th>去程</th><th>回程</th><th>＋稅(估)</th><th>含稅總價(估)</th></tr>'
-    : '<tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅(估)</th><th>含稅總價(估)</th></tr>';
-
-  const k = key(), v = curView();
+    ? '<tr><th class="l">出發</th><th class="l">星期</th><th class="l">回程</th><th>去程</th><th>回程</th><th>來回總價</th></tr>'
+    : '<tr><th class="l">日期</th><th class="l">星期</th><th>含稅總價</th></tr>';
+  const k = key(), curD = curDays(), v = curD;
   const cals = document.getElementById('cals');
   const sum = document.getElementById('summary');
   const bestBody = document.querySelector('#best tbody');
   if(!v){
-    sum.innerHTML='<div class="stat"><div class="lab">這個方向</div><div class="val">—</div><div class="note">'+
-      (rt?'這個天數組不出來回（回程日都沒班機）':'沒有掃到票價')+'</div></div>';
+    sum.innerHTML='<div class="stat"><div class="lab">這個方向</div><div class="val">—</div><div class="note">'+(rt?'這條航線沒有來回資料':'沒有掃到票價')+'</div></div>';
     cals.innerHTML=''; bestBody.innerHTML=''; return;
   }
-  const days = v.days, tax = v.tax;
+  const days = v.days, tax = null;
   const prices = Object.values(days).sort((a,b)=>a-b);
   const lo = prices[0], hi = prices[prices.length-1];
   const q1 = prices[Math.floor(prices.length/3)], q2 = prices[Math.floor(prices.length*2/3)];
   const med = prices[Math.floor(prices.length/2)];
   const T = n => tax==null ? null : n+tax;
 
-  const rtlab = rt ? ('來回'+(state.nights+1)+'天'+state.nights+'夜 · ') : '';
   sum.innerHTML = [
-    ['最低價', (T(lo)??lo), rtlab+(tax==null?'未稅 ':'含稅(估) ')+fmt(lo)+(tax==null?'':' ＋稅 '+fmt(tax)), true],
+    ['最低價', lo, rt?('含稅來回 '+(state.nights+1)+'天'+state.nights+'夜'):'含稅 · 單人單程', true],
     ['中位數', (T(med)??med), '一半的日子比這便宜', false],
     ['最高價', (T(hi)??hi), '整段期間最貴的一天', false],
     ['有票天數', Object.keys(days).length, DATA.from+' → '+DATA.to, false],
@@ -482,8 +428,7 @@ function render(){
         const best = (p===mLo && p<=q1) ? ' best':'';
         const tot = T(p);
         cells+='<div class="day '+cls+best+'"><div class="dnum">'+d+'</div><div class="p">'+
-               (tot!=null? fmt(tot) : fmt(p))+
-               (tot!=null? '<small>'+fmt(p)+'</small>' : '<small>未稅</small>')+'</div></div>';
+               fmt(p)+'</div></div>';
       }
     }
     const label = y+'年'+m+'月';
@@ -496,69 +441,48 @@ function render(){
   bestBody.innerHTML = Object.entries(days).sort((a,b)=>a[1]-b[1]).slice(0,20).map(([d,p])=>{
     const wd = new Date(d+'T00:00:00Z').getUTCDay();
     const we = (wd===0||wd===6)?' we':'';
-    if(rt){ const x=v.rt[d];
-      return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
-        '<td class="l num">'+x.rd+'</td>'+
-        (x.ex? '<td class="num" colspan="2">官網來回價 ✓</td>'
-             : '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>')+
-        '<td class="num">'+(tax==null?'未量':fmt(tax))+'</td>'+
-        '<td class="num tot">'+(tax==null?'—':fmt(p+tax))+'</td></tr>'; }
+    if(rt){ const x=curD.rt[d];
+      return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td><td class="l num">'+x.rd+'</td>'+
+        '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td><td class="num tot">'+fmt(x.t)+'</td></tr>'; }
     return '<tr><td class="l num">'+d+'</td><td class="l dow-tag'+we+'">'+WD[wd]+'</td>'+
-      '<td class="num">'+fmt(p)+'</td><td class="num">'+(tax==null?'未量':fmt(tax))+'</td>'+
-      '<td class="num tot">'+(tax==null?'—':fmt(p+tax))+'</td></tr>';
+      '<td class="num tot">'+fmt(p)+'</td></tr>';
   }).join('');
 }
 
-// 找最便宜的去回組合：給晚數範圍（＋可選出發月），列前 15 組
 function findCombos(){
-  const body = document.querySelector('#combo tbody');
-  const mn=Math.max(1,+document.getElementById('c-min').value||1);
-  const mx=Math.max(mn,+document.getElementById('c-max').value||mn);
-  const ym=document.getElementById('c-month').value;
-  const k=key(), go=R[k], back=R[retKey(k)];
-  if(!go||!back){ body.innerHTML='<tr><td colspan="7" class="l">這條航線缺其中一個方向的資料</td></tr>'; return; }
-  const tax=(go.tax!=null&&back.tax!=null)?go.tax+back.tax:null;
-  const out=[];
-  for(const d of Object.keys(go.days)){ if(ym && !d.startsWith(ym)) continue;
-    for(let n=mn;n<=mx;n++){ const rd=addDays(d,n), r=back.days[rd];
-      const ex = RTX[k] ? RTX[k][d+'|'+rd] : undefined;
-      if(ex!==undefined) out.push({d,rd,n,g:null,r:null,t:ex,ex:true});
-      else if(r!==undefined) out.push({d,rd,n,g:go.days[d],r,t:go.days[d]+r}); } }
+  const v=RT[key()], body=document.querySelector('#combo tbody');
+  if(!v){ body.innerHTML='<tr><td colspan="6" class="l">這條航線沒有來回資料</td></tr>'; return; }
+  const mn=Math.max(1,+document.getElementById('c-min').value||1), mx=Math.max(mn,+document.getElementById('c-max').value||mn);
+  const ym=document.getElementById('c-month').value; const out=[];
+  for(const d of Object.keys(v.go)){ if(ym && !d.startsWith(ym)) continue;
+    for(let n=mn;n<=mx;n++){ const rd=addDays(d,n), r=v.ret[rd]; if(r) out.push({d,rd,n,g:v.go[d],r,t:v.go[d]+r}); } }
   out.sort((a,b)=>a.t-b.t||a.d.localeCompare(b.d));
-  body.innerHTML = out.length ? out.slice(0,15).map(x=>{
-    const wd=new Date(x.d+'T00:00:00Z').getUTCDay(), we=(wd===0||wd===6)?' we':'';
-    return '<tr><td class="l num'+we+'">'+x.d+'（'+WD[wd]+'）</td><td class="l num">'+x.rd+'</td>'+
-      '<td class="num">'+x.n+'</td>'+
-      (x.ex? '<td class="num" colspan="2">官網來回價 ✓</td>'
-           : '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td>')+
-      '<td class="num">'+fmt(x.t)+'</td><td class="num tot">'+(tax==null?'—':fmt(x.t+tax))+'</td></tr>';
-  }).join('') : '<tr><td colspan="7" class="l">這個範圍沒有可組合的日期</td></tr>';
+  body.innerHTML = out.length ? out.slice(0,15).map(x=>{ const wd=new Date(x.d+'T00:00:00Z').getUTCDay();
+    return '<tr><td class="l num">'+x.d+'（'+WD[wd]+'）</td><td class="l num">'+x.rd+'</td><td class="num">'+x.n+'</td>'+
+      '<td class="num">'+fmt(x.g)+'</td><td class="num">'+fmt(x.r)+'</td><td class="num tot">'+fmt(x.t)+'</td></tr>'; }).join('')
+    : '<tr><td colspan="6" class="l">這個範圍沒有可組合的日期</td></tr>';
 }
 
 function buildAll(){
   const rt = state.nights>0;
-  let entries = Object.entries(R);
-  if(rt) entries = entries.filter(([k,v])=>['HKG','TPE','KHH','RMQ'].includes(v.o));
+  const entries = rt
+    ? Object.keys(RT).map(k=>{ const m=rtDays(k,state.nights); if(!m||!R[k]) return null; const days={}; for(const d of Object.keys(m)) days[d]=m[d].t; return [k,{...R[k],days}]; }).filter(Boolean)
+    : Object.entries(R);
   const rows = entries.map(([k,v])=>{
-    const view = rt ? rtView(k,state.nights) : v;
-    if(!view) return null;
-    const e = Object.entries(view.days).sort((a,b)=>a[1]-b[1])[0];
-    return {k, v, tax:view.tax, date:e[0], p:e[1], tot: view.tax==null? null : e[1]+view.tax};
-  }).filter(Boolean).sort((a,b)=> (a.tot??a.p)-(b.tot??b.p));
+    const e = Object.entries(v.days).sort((a,b)=>a[1]-b[1])[0];
+    return {k, v, date:e[0], p:e[1], tot: null};
+  }).sort((a,b)=> (a.tot??a.p)-(b.tot??b.p));
   document.querySelector('#all tbody').innerHTML = rows.map(r=>
-    '<tr><td class="l"><b>'+r.k+(rt?' 來回':'')+'</b><span class="rt-name">'+r.v.on+(rt?' ⇄ ':' → ')+r.v.dn+'</span></td>'+
-    '<td class="num">'+fmt(r.p)+'</td><td class="num">'+(r.tax==null?'未量':fmt(r.tax))+'</td>'+
-    '<td class="num tot">'+(r.tot==null?'—':fmt(r.tot))+'</td>'+
+    '<tr><td class="l"><b>'+r.k+'</b><span class="rt-name">'+r.v.on+' → '+r.v.dn+'</span></td>'+
+    '<td class="num tot">'+fmt(r.p)+'</td>'+
     '<td class="l num">'+r.date+'</td></tr>').join('');
 }
 
 document.getElementById('btn-out').onclick=()=>{ state.dir='out'; render(); };
 document.getElementById('btn-ret').onclick=()=>{ state.dir='ret'; render(); };
-document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>
-  b.addEventListener('click',()=>{ state.nights=+b.dataset.n; buildAll(); render(); }));
-document.getElementById('nights-in').addEventListener('change',function(){
-  const n=+this.value; if(n>0){ state.nights=n; buildAll(); render(); } });
-document.getElementById('c-go').addEventListener('click',findCombos);
+document.querySelectorAll('#modechips .chip[data-n]').forEach(b=>{ b.onclick=()=>{ state.nights=+b.dataset.n; buildAll(); render(); }; });
+{ const ni=document.getElementById('nights-in'); if(ni) ni.onchange=function(){ const n=+this.value; if(n>0){ state.nights=n; buildAll(); render(); } }; }
+document.getElementById('c-go').onclick=findCombos;
 buildGroups(); buildAll(); render();
 </script>
 """
@@ -570,6 +494,6 @@ html = (HTML
         .replace("__TO__", all_dates[-1])
         .replace("__NROUTES__", str(len(data)))
         .replace("__NDAYS__", f"{len(fares):,}")
-        .replace("__NTAX__", str(sum(1 for v in data.values() if v["tax"] is not None))))
+)
 open(out_path, "w").write(html)
 print(f"{out_path}  {len(html)/1024:.0f} KB  {len(data)} 航向 / {len(fares):,} 筆")

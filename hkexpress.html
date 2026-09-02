@@ -67,6 +67,7 @@
   <a href="hotels.html">🏨 飯店房況</a>
   <a href="tigerair.html">🐯 虎航票價</a>
   <a href="airmacau.html">🇲🇴 澳航票價</a>
+  <a href="chinaairlines.html">🇹🇼 華航票價</a>
   <a href="starlux.html">✨ 星宇票價</a>
   <a href="rules.html">📖 規則庫</a>
 </div>
@@ -138,7 +139,7 @@
       <tbody></tbody>
     </table></div>
     <p class="msg" style="margin-top:10px">
-      稅費是用 Google Flights 同日 UO 含稅價回推的估算值(跨日期極穩定):台灣出發+2,370、香港出發+2,600~2,850、轉機=兩段相加-700;海外→香港方向未校準標「未估」。UO 未稅價很甜但稅超重,比價一定看含稅。
+      稅費是用 Google Flights 同日 UO 含稅價回推的估算值(跨日期極穩定):台灣出發+2,370、香港出發+2,600~2,850、轉機=兩段相加-200;海外→香港方向未校準標「未估」。UO 未稅價很甜但稅超重,比價一定看含稅。
       台灣出發的機場服務費 2026-09-01 起 500→750 元,調整後會重量。
       海外出發以當地幣別定價換算台幣,會隨匯率浮動。
     </p>
@@ -157,7 +158,7 @@
   var TW=["HKG","TPE","KHH","RMQ"], WD=["日","一","二","三","四","五","六"];
   var RTX={};   // UO 沒有來回矩陣 API,來回=兩張單程相加
   // 稅費估算（GF 校準 2026-09-02,跨日期極穩定）
-  var TAXM={"TPE-HKG":2370,"KHH-HKG":2370,"RMQ-HKG":2370,"HKG-TPE":2600,"HKG-KHH":2600,
+  var TAXM={"TPE-HKG":2370,"KHH-HKG":2370,"RMQ-HKG":2370,"HKG-TPE":2800,"HKG-KHH":2800,
     "HKG-RMQ":2800,"HKG-NRT":2800,"HKG-ICN":2800,"HKG-BKK":2850,"HKG-DAD":2800};
   var TWSET={TPE:1,KHH:1,RMQ:1,TNN:1};
   function legTax(o,d){ var k=o+"-"+d; if(TAXM[k]!=null) return TAXM[k];
@@ -167,7 +168,7 @@
   function estTax(k){ var p=k.split("-");
     if(p[0]==="HKG"||p[1]==="HKG") return legTax(p[0],p[1]);
     var a=legTax(p[0],"HKG"), b=legTax("HKG",p[1]);
-    return (a==null||b==null)?null:a+b-700; }
+    return (a==null||b==null)?null:a+b-200; }
   var R={}, span={from:null,to:null};
   var st={origin:"HKG",dest:"TPE",dir:"out",nights:0};   // nights 0 = 單程
 

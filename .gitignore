@@ -50,3 +50,10 @@ hkexpress/watchlist.json
 hkexpress/history/
 hkexpress/scan-out.txt
 hkexpress/scan-err.txt
+chinaairlines/baseline*.json
+chinaairlines/network.json
+chinaairlines/watch-state.json
+chinaairlines/watchlist.json
+chinaairlines/history/
+chinaairlines/scan-out.txt
+chinaairlines/scan-err.txt
