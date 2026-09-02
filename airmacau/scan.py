@@ -89,11 +89,16 @@ def main():
     if a.routes:
         pairs = [tuple(r.split("-")) for r in a.routes.split(",")]
     elif a.all:
-        pairs = []
-        for x in sorted(net["names"]):
-            if x == "MFM":
-                continue
-            pairs += [("MFM", x), (x, "MFM")]
+        # MFM⇄全部（直航網）＋台灣三場⇄全部（經澳門轉機也報價，Tony 要看轉機能去哪）
+        pairs, seen = [], set()
+        for org in ["MFM", "TPE", "KHH", "RMQ"]:
+            for x in sorted(net["names"]):
+                if x == org:
+                    continue
+                for p in [(org, x), (x, org)]:
+                    if p not in seen:
+                        seen.add(p)
+                        pairs.append(p)
     else:
         pairs = [("TPE", "MFM"), ("MFM", "TPE"), ("KHH", "MFM"),
                  ("MFM", "KHH"), ("RMQ", "MFM"), ("MFM", "RMQ")]

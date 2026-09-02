@@ -10,7 +10,6 @@
 import json, sys, datetime, collections
 
 fares = json.load(open(sys.argv[1]))
-tax = {}   # 澳航拿不到稅金明細，全頁未稅
 NET = json.load(open(sys.argv[2]))
 out_path = sys.argv[3] if len(sys.argv) > 3 else "airmacau-prices.html"
 
@@ -24,6 +23,40 @@ FLAG = {"TW": "台灣", "CN": "中國大陸", "JP": "日本", "KR": "韓國", "T
         "MO": "澳門", "HK": "香港", "HUB": "澳門", "RU": "俄羅斯", "MN": "蒙古",
         "AE": "阿聯", "kz": "哈薩克"}
 
+# ── 稅費估算（2026-09-02 用 Google Flights 同日澳航含稅價回推）────────────
+# 方法：每航向取 3 個分散日期，diff = GF澳航最低含稅 − 官網日曆未稅，取「最小」
+# diff 當稅（艙等錯配只會把 diff 灌高不會壓低）。校準原始數據存 scratchpad nx-calib2-out.json。
+TAX_MEASURED = {
+    "TPE-MFM": 2000, "KHH-MFM": 1950, "RMQ-MFM": 1800,
+    "MFM-TPE": 1000, "MFM-KHH": 1150, "MFM-RMQ": 1600,
+    "MFM-NRT": 1950, "MFM-ICN": 2050, "MFM-BKK": 1100, "MFM-DAD": 1250,
+}
+TW = {"TPE", "KHH", "RMQ", "TNN"}
+def _leg_tax(o, d):
+    k = f"{o}-{d}"
+    if k in TAX_MEASURED:
+        return TAX_MEASURED[k]
+    dc = COUNTRY.get(d, "?")
+    if o in TW and d == "MFM":
+        return 1900
+    if o == "MFM":
+        if dc == "TW":
+            return 1250
+        if dc in ("JP", "KR"):
+            return 2000
+        if dc in ("THA", "VN", "PH", "ID", "SG", "MALA"):
+            return 1200
+    return None   # 中國大陸／回程海外出發等沒校準過的，不硬給
+def est_tax(o, d):
+    if o == "MFM" or d == "MFM":
+        return _leg_tax(o, d)
+    # 經澳門轉機（兩段）：兩段稅相加，扣掉轉機不重複收的澳門機場費（粗估 500）
+    a, b = _leg_tax(o, "MFM"), _leg_tax("MFM", d)
+    if a is None or b is None:
+        return None
+    return a + b - 500
+
+tax = {}
 routes = collections.defaultdict(dict)
 for r in fares:
     routes[f"{r['origin']}-{r['destination']}"][r["date"]] = r["amount"]
@@ -35,7 +68,7 @@ for k, days in routes.items():
         "o": o, "d": d,
         "on": CITY.get(o, o), "dn": CITY.get(d, d),
         "oc": country(o), "dc": country(d),
-        "tax": tax.get(k),
+        "tax": est_tax(o, d),
         "days": days,
     }
 
@@ -232,7 +265,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <header>
   <p class="kicker">Air Macau · 全航線每日最低價</p>
   <h1>澳門航空價格日曆</h1>
-  <p class="sub">官網價格日曆是「單人未稅單程」最低價；澳航拿不到稅金明細，本頁<b>全部是未稅價</b>（實測含稅約再加 1,400～1,900）。
+  <p class="sub">官網價格日曆是「單人未稅單程」最低價，本頁的<b>含稅總價是估算值</b>（用 Google Flights 同日澳航含稅價校準，誤差約 ±數百元）。台灣出發到澳門以外的目的地＝<b>經澳門轉機</b>的行程。
      艙等以最陽春的 tigerLight 計；行李、選位、餐點另外加。</p>
   <div class="meta">
     <span><b>掃描時間</b> __SCANNED__</span>
@@ -258,7 +291,7 @@ footer p{margin:0 0 6px; max-width:78ch}
     <button class="chip" data-n="5">來回 6天5夜</button>
     <label class="chip" style="gap:6px">自訂 <input id="nights-in" type="number" min="1" max="60" value="7" style="width:54px;font:inherit;padding:1px 4px"> 晚</label>
   </div>
-  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">來回＝兩張單程相加的<b>估算值</b>（澳航是否有來回折扣未驗證），全部未稅；下訂前以官網為準。</p>
+  <p class="sub" id="rtnote" style="display:none;font-size:12.5px;margin-top:10px">來回＝兩張單程相加的<b>估算值</b>（澳航是否有來回折扣未驗證）；含稅一樣是估算。下訂前以官網為準。</p>
 </section>
 
 <section class="board" id="combo-card" style="display:none">
@@ -270,7 +303,7 @@ footer p{margin:0 0 6px; max-width:78ch}
     <button class="chip" id="c-go" type="button">找</button>
   </div>
   <div class="tblwrap" style="margin-top:12px"><table id="combo">
-    <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回未稅</th><th>含稅總價</th></tr></thead>
+    <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回未稅</th><th>含稅總價(估)</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>
@@ -281,7 +314,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="board">
   <h2>這條航線最便宜的 20 天</h2>
   <div class="tblwrap"><table id="best">
-    <thead id="best-head"><tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅</th><th>含稅總價</th></tr></thead>
+    <thead id="best-head"><tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅(估)</th><th>含稅總價(估)</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>
@@ -289,7 +322,7 @@ footer p{margin:0 0 6px; max-width:78ch}
 <section class="allroutes">
   <h2>全航線最低價一覽</h2>
   <div class="tblwrap"><table id="all">
-    <thead><tr><th class="l">航線</th><th>未稅</th><th>＋稅</th><th>含稅總價</th><th class="l">最便宜那天</th></tr></thead>
+    <thead><tr><th class="l">航線</th><th>未稅</th><th>＋稅(估)</th><th>含稅總價(估)</th><th class="l">最便宜那天</th></tr></thead>
     <tbody></tbody>
   </table></div>
   <div class="legend">
@@ -301,10 +334,12 @@ footer p{margin:0 0 6px; max-width:78ch}
 </section>
 
 <footer>
-  <p>資料來源：澳門航空官網價格日曆（公開查詢，無需登入）。<b>價格全部未含稅費</b>——
-     官網訂位的稅金明細拿不到，實測含稅總價約比本頁高 1,400～1,900 台幣（依航向不同）。</p>
-  <p>官網日曆是快取值、報價以台幣回傳；實際下訂前請以官網即時查詢為準。
-     經澳門轉機的行程（如台北→東京）官網也會報價，本頁只列直航航向。</p>
+  <p>資料來源：澳門航空官網價格日曆（公開查詢，無需登入）。稅費為估算值：用 Google Flights
+     同日澳航含稅價回推（每航向取多日期的最小差值），台灣出發約 +1,800～2,000、澳門→台灣約
+     +1,000～1,600、澳門→日韓約 +2,000、澳門→東南亞約 +1,100～1,250；經澳門轉機＝兩段相加再扣
+     轉機不重複的機場費。中國大陸航線與海外→澳門方向未校準，顯示未稅。</p>
+  <p>台灣出發到澳門以外的目的地都是<b>經澳門轉機</b>的行程（澳航官網直接賣聯程票）。
+     官網日曆是快取值；實際下訂前請以官網即時查詢為準。</p>
 </footer>
 </div>
 
@@ -334,10 +369,10 @@ function curView(){ const k=key();
 
 function buildGroups(){
   const box = document.getElementById('groups');
-  const origins = ['TPE','RMQ','KHH','TNN'];
+  const origins = ['MFM','TPE','KHH','RMQ'];
   const oRow = document.createElement('div');
   oRow.className = 'grp';
-  oRow.innerHTML = '<div class="grp-label">澳門出發</div>';
+  oRow.innerHTML = '<div class="grp-label">出發地</div>';
   const oChips = document.createElement('div'); oChips.className='chips';
   origins.forEach(o=>{
     const b=document.createElement('button'); b.className='chip'; b.dataset.o=o;
@@ -393,8 +428,8 @@ function render(){
   document.getElementById('btn-out').setAttribute('aria-pressed', state.dir==='out');
   document.getElementById('btn-ret').setAttribute('aria-pressed', state.dir==='ret');
   document.getElementById('best-head').innerHTML = rt
-    ? '<tr><th class="l">出發</th><th class="l">星期</th><th class="l">回程</th><th>去程</th><th>回程</th><th>＋稅</th><th>含稅總價</th></tr>'
-    : '<tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅</th><th>含稅總價</th></tr>';
+    ? '<tr><th class="l">出發</th><th class="l">星期</th><th class="l">回程</th><th>去程</th><th>回程</th><th>＋稅(估)</th><th>含稅總價(估)</th></tr>'
+    : '<tr><th class="l">日期</th><th class="l">星期</th><th>未稅票價</th><th>＋稅(估)</th><th>含稅總價(估)</th></tr>';
 
   const k = key(), v = curView();
   const cals = document.getElementById('cals');
@@ -414,7 +449,7 @@ function render(){
 
   const rtlab = rt ? ('來回'+(state.nights+1)+'天'+state.nights+'夜 · ') : '';
   sum.innerHTML = [
-    ['最低價', (T(lo)??lo), rtlab+(tax==null?'未稅 ':'含稅 ')+fmt(lo)+(tax==null?'':' ＋稅 '+fmt(tax)), true],
+    ['最低價', (T(lo)??lo), rtlab+(tax==null?'未稅 ':'含稅(估) ')+fmt(lo)+(tax==null?'':' ＋稅 '+fmt(tax)), true],
     ['中位數', (T(med)??med), '一半的日子比這便宜', false],
     ['最高價', (T(hi)??hi), '整段期間最貴的一天', false],
     ['有票天數', Object.keys(days).length, DATA.from+' → '+DATA.to, false],
@@ -498,7 +533,7 @@ function findCombos(){
 function buildAll(){
   const rt = state.nights>0;
   let entries = Object.entries(R);
-  if(rt) entries = entries.filter(([k,v])=>v.oc==='HUB');
+  if(rt) entries = entries.filter(([k,v])=>['MFM','TPE','KHH','RMQ'].includes(v.o));
   const rows = entries.map(([k,v])=>{
     const view = rt ? rtView(k,state.nights) : v;
     if(!view) return null;
