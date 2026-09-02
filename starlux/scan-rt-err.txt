@@ -6,12 +6,12 @@
 
 # 失敗 21 次
   TPE-DPS ret 2026-09: Invalid data.
+  TPE-OKA ret 2026-09: Invalid data.
   TPE-PHX ret 2026-09: Invalid data.
-  TPE-PHX ret 2026-10: Invalid data.
-  TPE-PHX ret 2026-11: Invalid data.
-  TPE-PHX ret 2026-12: Invalid data.
   TPE-PRG ret 2026-09: Invalid data.
   TPE-PRG ret 2026-10: Invalid data.
   RMQ-CTS ret 2026-09: Invalid data.
   RMQ-DAD: 找不到 eco 艙等家族代碼
   RMQ-KMJ ret 2026-09: Invalid data.
+  RMQ-KMJ ret 2026-10: Invalid data.
+  RMQ-NGO ret 2026-09: Invalid data.
