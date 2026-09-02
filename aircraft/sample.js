@@ -61,7 +61,10 @@ function sampleDate() {
       for (const x of segs) {
         const fn = x.code + x.num;
         const e = entry[fn] || { airline: x.airline, aircraft: x.aircraft, pitch: x.pitch, cabin: x.cabin, dates: [] };
-        e.aircraft = x.aircraft; e.pitch = x.pitch ?? e.pitch; e.airline = x.airline;
+        // 同班號不同日期可能換機型（YVR-TPE CI31 週三 A350、週六 777）：types 累積，aircraft 顯示成 'A350 / 777'
+        e.types = e.types || (e.aircraft ? [e.aircraft] : []);
+        if (!e.types.includes(x.aircraft)) e.types.push(x.aircraft);
+        e.aircraft = e.types.join(' / '); e.pitch = x.pitch ?? e.pitch; e.airline = x.airline;
         if (!e.dates.includes(date)) e.dates.push(date);
         e.lastSeen = date; entry[fn] = e;
       }
