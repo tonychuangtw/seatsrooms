@@ -57,3 +57,5 @@ chinaairlines/watchlist.json
 chinaairlines/history/
 chinaairlines/scan-out.txt
 chinaairlines/scan-err.txt
+aircraft/aircraft-map.json
+aircraft/run-*.log
