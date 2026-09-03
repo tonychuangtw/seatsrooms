@@ -34,7 +34,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // 在頁面內跑的函式：走完 waiting-room → recaptcha → create session → flight search result
 const IN_PAGE = args => `(async () => {
-  const { origin, destination, date, sitekey, adult, returnDate, member } = ${JSON.stringify(args)};
+  const { origin, destination, date, sitekey, adult, returnDate, member, wrWait } = ${JSON.stringify(args)};
   const deviceId = crypto.randomUUID();
   const H = {
     'Content-Type': 'application/json',
@@ -60,10 +60,26 @@ const IN_PAGE = args => `(async () => {
   const aq = await j('https://api-wr.tigerairtw.com/assign_queue_num',
     { method: 'POST', headers: WRH, body: JSON.stringify({ event_id: 'normal' }) });
   if (!aq.api_request_id) return { error: 'assign_queue_num failed', detail: aq };
-  const gt = await j('https://api-wr.tigerairtw.com/generate_token',
-    { method: 'POST', headers: WRH,
-      body: JSON.stringify({ request_id: aq.api_request_id, event_id: 'normal' }) });
-  if (!gt.access_token) return { error: 'generate_token failed', detail: gt };
+  // 促銷擁擠時官網會出排隊頁（Tony 9/3 確認）：generate_token 不會馬上給 access_token。
+  // 同一個 request_id 每 3 秒再問一次，最多等 wrWait 秒（預設 90）。9/3 前的版本只問一次，
+  // 一排隊就直接 generate_token failed，促銷當下會員查價整個癱掉（gemini review）。
+  const wrStart = Date.now();
+  const wrDeadline = wrStart + (wrWait || 90) * 1000;
+  let gt = null, wrFirst = null, wrPolls = 0;
+  for (;;) {
+    gt = await j('https://api-wr.tigerairtw.com/generate_token',
+      { method: 'POST', headers: WRH,
+        body: JSON.stringify({ request_id: aq.api_request_id, event_id: 'normal' }) });
+    wrPolls++;
+    if (gt.access_token) break;
+    if (!wrFirst) wrFirst = gt;
+    if (Date.now() >= wrDeadline) {
+      return { error: 'generate_token failed（排隊 ' + Math.round((Date.now() - wrStart) / 1000) + ' 秒仍未拿到 token）',
+               detail: gt, wrInfo: { polls: wrPolls, first: wrFirst } };
+    }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  const wrInfo = wrPolls > 1 ? { polls: wrPolls, waitedMs: Date.now() - wrStart, first: wrFirst } : null;
 
   // 2. reCAPTCHA v3（action 跟官網搜尋鈕一致）
   // 官網自己載的是 render=explicit，grecaptcha.ready 不會為我們的 key 觸發，
@@ -139,7 +155,7 @@ const IN_PAGE = args => `(async () => {
     }\`,
     variables: { id: sid },
   }) });
-  return { sessionId: sid, result: out };
+  return { sessionId: sid, result: out, wrInfo };
 })()`;
 
 async function main() {
@@ -157,11 +173,14 @@ async function main() {
   const retIdx = args.indexOf('--return');
   let returnDate = null;
   if (retIdx >= 0) { returnDate = args[retIdx + 1]; args.splice(retIdx, 2); }
+  const wrIdx = args.indexOf('--wr-wait');
+  let wrWait = 90;
+  if (wrIdx >= 0) { wrWait = parseInt(args[wrIdx + 1], 10) || 90; args.splice(wrIdx, 2); }
   const adultIdx = args.indexOf('--adult');
   let adult = 1;
   if (adultIdx >= 0) { adult = parseInt(args[adultIdx + 1], 10); args.splice(adultIdx, 2); }
   if (args.length < 3 || args.length % 3) {
-    console.error('用法: node fare-detail.js <ORIG> <DEST> <YYYY-MM-DD> [...] [--adult N] [--delay 秒] [--out file]');
+    console.error('用法: node fare-detail.js <ORIG> <DEST> <YYYY-MM-DD> [...] [--adult N] [--delay 秒] [--wr-wait 排隊秒] [--out file]');
     process.exit(1);
   }
   const jobs = [];
@@ -193,7 +212,7 @@ async function main() {
       let r;
       try {
         const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: JWT || (MEMBER ? 'cookie' : null) }),
+          userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: JWT || (MEMBER ? 'cookie' : null), wrWait }),
         });
         r = res.result;
       } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
@@ -204,14 +223,16 @@ async function main() {
         await openTab();
         try {
           const res = await cf('POST', `/tabs/${tabId}/evaluate`, {
-            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: JWT || (MEMBER ? 'cookie' : null) }),
+            userId: USER, expression: IN_PAGE({ ...job, sitekey: SITEKEY, adult, returnDate, member: JWT || (MEMBER ? 'cookie' : null), wrWait }),
           });
           r = res.result;
         } catch (e) { r = { error: String(e.message).slice(0, 200) }; }
       }
       results.push({ ...job, raw: r });
       console.error(`[${i + 1}/${jobs.length}] ${job.origin}-${job.destination} ${job.date} `
-        + (r && r.error ? `FAIL ${r.error}` : 'ok'));
+        + (r && r.error ? `FAIL ${r.error}` : 'ok')
+        + (r && r.wrInfo ? `　排隊 ${r.wrInfo.polls} 次` + (r.wrInfo.waitedMs ? ` ${Math.round(r.wrInfo.waitedMs / 1000)} 秒` : '')
+                           + ` 首次回應 ${JSON.stringify(r.wrInfo.first).slice(0, 160)}` : ''));
       if (outFile) require('fs').writeFileSync(outFile, JSON.stringify(results, null, 1));
     }
   } finally {

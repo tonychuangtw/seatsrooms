@@ -1,5 +1,18 @@
 [
- {"allRoutes": true, "since": "2026-09-16", "until": "2027-03-27",
-  "thresholdNet": 700, "noNewLow": true,
-  "note": "12 週年慶全網撿便宜：尊榮虎 112 元起 / 全員 512 元起,都是未稅價"}
+ {
+  "allRoutes": true,
+  "since": "2026-09-16",
+  "until": "2027-03-27",
+  "thresholdNet": 700,
+  "noNewLow": true,
+  "note": "12 週年慶全網撿便宜：尊榮虎 112 元起 / 全員 512 元起,都是未稅價",
+  "priority": [
+   "KHH-CJU",
+   "CJU-KHH",
+   "KHH-CTS",
+   "CTS-KHH",
+   "KHH-SDJ",
+   "SDJ-KHH"
+  ]
+ }
 ]

@@ -12,38 +12,17 @@ watchlist.json 一筆長這樣（threshold 比含稅總價、thresholdNet 比官
 
 state 檔記住每個 (航線,日期) 看過的最低價，同一個價格不會重複吵。
 """
-import argparse, datetime, json, os, subprocess, sys, time, urllib.request, urllib.error
+import argparse, datetime, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from scan import all_routes, daily_prices, load_tax  # noqa: E402
+from tgpush import send as tg  # noqa: E402
 
 WATCHLIST = os.path.join(HERE, "watchlist.json")
 STATE = os.path.join(HERE, "watch-state.json")
 VERIFY_STAMP = os.path.join(HERE, ".verify-stamp")
 VERIFY_COOLDOWN = 8 * 60   # 秒
-TG_ENV = os.environ.get("TG_ENV_FILE") or os.path.expanduser(
-    "~/.claude/channels/telegram-seatsrooms/.env")
-CHAT_ID = 711631512
-
-
-def tg(text):
-    try:
-        with open(TG_ENV) as f:
-            token = next(l.split("=", 1)[1].strip() for l in f
-                         if l.startswith("TELEGRAM_BOT_TOKEN="))
-    except Exception:
-        print("no TG token, skipped push")
-        return
-    body = json.dumps({"chat_id": CHAT_ID, "text": text,
-                       "disable_web_page_preview": True}).encode()
-    req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage",
-                                 data=body, headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            print(f"TG push: HTTP {r.status}")
-    except urllib.error.HTTPError as e:
-        print(f"TG push failed: {e.code} {e.read()[:200]}")
 
 
 def verify(hits):
@@ -132,6 +111,9 @@ def main():
     except Exception:
         state = {}
 
+    # state 這輪的更新先放 pending，TG 真的送出去（或這輪根本沒東西要推）才落地。
+    # 9/3 codex：以前是先寫 state 再推，TG 掉一次那筆便宜票就永遠靜音。
+    pending = {}
     hits, errors = [], []
     for w in watches:
         if w.get("disabled"):
@@ -180,15 +162,16 @@ def main():
                 if not cheap and thr is not None:
                     cheap = (total if total is not None else net) <= thr
                 cheap = cheap and improved
+                new_max = w.get("newLowMax")   # 9/3 gemini：原本預設 0，來回新低永遠不推
                 newlow = (not w.get("noNewLow") and prev is not None and net < prev
-                          and net <= w.get("newLowMax", 0))
+                          and (new_max is None or net <= new_max))
                 if cheap or newlow:
                     hits.append({"w": w, "date": r["date"], "amount": net,
                                  "total": total, "tax": tax_both, "prev": prev, "rt": True,
                                  "combo": f"去 {r['date']} 回 {rd}（{n}晚）{r['amount']:,}＋{ret_amt:,}",
                                  "why": "來回門檻" if cheap else "來回新低"})
                 if improved:
-                    state[k] = {"low": net, "ts": int(time.time())}
+                    pending[k] = {"low": net, "ts": int(time.time())}
             time.sleep(0.3)
             continue
 
@@ -222,21 +205,31 @@ def main():
                              "total": total, "tax": t, "prev": prev,
                              "why": "門檻" if cheap else "新低"})
             if prev is None or r["amount"] < prev:
-                state[k] = {"low": r["amount"], "ts": int(time.time())}
+                pending[k] = {"low": r["amount"], "ts": int(time.time())}
         time.sleep(0.3)
 
-    json.dump(state, open(a.state, "w"), indent=0)
+    def commit_state():
+        state.update(pending)
+        json.dump(state, open(a.state, "w"), indent=0)
 
     if errors:
         print("錯誤：" + "; ".join(errors))
     if a.init:
+        commit_state()
         print(f"基準建立完成，{len(state)} 個 (航線,日期)")
         return
     if not hits:
+        commit_state()
         print(f"沒有新的便宜票（追蹤 {len(state)} 個 (航線,日期)）")
         return
 
-    hits.sort(key=lambda h: h["total"] if h["total"] is not None else h["amount"])
+    # priority 航線（promo 清單用：全網 90 航向一輪最多只列 25 筆，Tony 盯的高雄濟州／
+    # 札幌不能被其他便宜線淹沒）永遠排前面，其餘照含稅價
+    def sort_key(h):
+        pri = h["w"].get("priority") or []
+        return (0 if h["w"]["route"] in pri else 1,
+                h["total"] if h["total"] is not None else h["amount"])
+    hits.sort(key=sort_key)
     # 單一 watchlist 條目一輪最多列 5 筆：新條目第一輪沒有基準，整條航線幾十個日期
     # 會同時觸發（08-31 CTS-KHH 一口氣 26 筆洗版），只推最便宜的幾筆＋一行總數
     shown, kept, extra = {}, [], {}
@@ -268,8 +261,13 @@ def main():
     lines.append("https://booking.tigerairtw.com/")
     text = "\n".join(lines)
     print(text)
-    if not a.dry:
-        tg(text)
+    if a.dry:
+        return            # 只印不推，state 也不動，正式那輪照樣會推
+    if tg(text):
+        commit_state()
+    else:
+        print("TG 沒送出去，state 不落地，下輪會重推")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
