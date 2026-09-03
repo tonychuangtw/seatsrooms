@@ -271,6 +271,7 @@ def main():
                     help="來回模式：每航線每月抓去程RT月曆＋回程RT月曆（多一個月給跨月的回程）")
     ap.add_argument("--nights", type=int, default=3, help="--rt 時列表用幾晚（3天2夜=2）")
     ap.add_argument("--tw-only", action="store_true", help="只掃台灣出發的航向")
+    ap.add_argument("--alert", action="store_true", help="有航向失敗就推 TG（排程用）")
     a = ap.parse_args()
 
     net = network(a.refresh_network)
@@ -290,13 +291,14 @@ def main():
     print(f"# {len(pairs)} 個航向 × {len(ms)} 個月 = {len(pairs) * len(ms)} 次請求"
           f"（{a.cabin}，{a.adt} 位大人，含稅）", file=sys.stderr)
 
-    rows, errors = [], []
+    rows, errors, route_err = [], [], {}
     for i, (o, d) in enumerate(pairs, 1):
         for ym in ms:
             try:
                 rows.extend(month_prices(o, d, ym, a.cabin, a.adt))
             except Exception as e:
                 errors.append(f"{o}-{d} {ym}: {str(e)[:80]}")
+                route_err.setdefault(f"{o}-{d}", []).append(f"{ym} {str(e)[:60]}")
         if i % 10 == 0:
             print(f"  …{i}/{len(pairs)}", file=sys.stderr)
 
@@ -326,8 +328,15 @@ def main():
         for e in errors[:10]:
             print("  " + e, file=sys.stderr)
     if a.json:
+        sys.path.insert(0, os.path.dirname(HERE))
+        from scanmeta import finish
+        failed = [{"route": k, "error": f"{len(v)} 個月失敗：" + "；".join(v[:2])}
+                  for k, v in route_err.items()]
+        rc = finish(a.json, rows, pairs, failed, since=a.since, until=a.until, airline="星宇",
+                    alert=a.alert, critical=("TPE-NRT", "NRT-TPE", "TPE-CTS", "CTS-TPE"))
         json.dump(rows, open(a.json, "w"), ensure_ascii=False, indent=1)
         print(f"\n→ {a.json}")
+        sys.exit(rc)
 
 
 def main_rt(a, pairs, ms, names):

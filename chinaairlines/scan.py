@@ -152,6 +152,7 @@ def main():
     ap.add_argument("--all", action="store_true", help="台灣四場⇄候選網探測掃描")
     ap.add_argument("--json", help="輸出 json 檔")
     ap.add_argument("--top", type=int, default=15)
+    ap.add_argument("--alert", action="store_true", help="有航向失敗就推 TG（排程用）")
     a = ap.parse_args()
     fx = fx_rates()
 
@@ -165,12 +166,13 @@ def main():
     else:
         pairs = [("TPE", "CTS"), ("CTS", "TPE"), ("KHH", "CTS"), ("CTS", "KHH")]
 
-    out, routes_found, fails = [], {}, 0
+    out, routes_found, fails, failed = [], {}, 0, []
     for org, dest in pairs:
         days = calendar(org, dest)
         time.sleep(GAP)
         if days is None:
             fails += 1
+            failed.append({"route": f"{org}-{dest}", "error": "calendar 失敗（見 stderr）"})
             continue
         if not days:
             continue
@@ -203,8 +205,13 @@ def main():
         orig = "" if r["currency"] == "TWD" else f"（{r['amount']:,.0f} {r['currency']}）"
         print(f"  {k:12s} {name:16s} {r['twd']:>8,}{orig}  {r['date']}")
     if a.json:
+        sys.path.insert(0, os.path.dirname(HERE))
+        from scanmeta import finish
+        rc = finish(a.json, out, pairs, failed, since=datetime.date.today().isoformat(),
+                    airline="華航", alert=a.alert, critical=("TPE-CTS", "CTS-TPE", "KHH-CTS", "CTS-KHH"))
         json.dump(out, open(a.json, "w"), ensure_ascii=False)
         print(f"\n→ {a.json}")
+        sys.exit(rc)
 
 
 if __name__ == "__main__":

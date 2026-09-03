@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/shared.css?v=20260815">
+<link rel="stylesheet" href="assets/shared.css?v=20260903">
 <style>
   /* 航線挑選 */
   .pickrow{ display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-top:1px solid var(--border); }
@@ -63,12 +63,13 @@
 <h1>🛫 香港快運價格日曆</h1>
 <p class="sub">香港快運全航線每日最低價 · 未稅價(海外出發已換算台幣) · 含稅為 GF 校準估算(UO 稅很重,台灣出發約+2,370) · 台灣出發到香港以外＝經香港轉機</p>
 <div class="nav">
-  <a href="index.html">✈️ 機位主頁</a>
-  <a href="hotels.html">🏨 飯店房況</a>
-  <a href="tigerair.html">🐯 虎航票價</a>
-  <a href="airmacau.html">🇲🇴 澳航票價</a>
-  <a href="chinaairlines.html">🇹🇼 華航票價</a>
-  <a href="starlux.html">✨ 星宇票價</a>
+  <a href="index.html">✈️ 機位</a>
+  <a href="tigerair.html">🐯 虎航</a>
+  <a href="starlux.html">✨ 星宇</a>
+  <a href="chinaairlines.html">🇹🇼 華航</a>
+  <a href="airmacau.html">🇲🇴 澳航</a>
+  <a href="hkexpress.html">🛫 快運</a>
+  <a href="hotels.html">🏨 飯店</a>
   <a href="rules.html">📖 規則庫</a>
 </div>
 
@@ -78,6 +79,7 @@
 </div>
 
 <div id="app" class="hidden">
+  <div class="hl" id="fresh"></div>
   <div class="card">
     <h2>選航線</h2>
     <div id="picker"></div>
@@ -117,7 +119,7 @@
       <div><button class="chip" id="c-go" type="button" style="min-height:40px;width:100%">找</button></div>
     </div>
     <div class="scroll" style="margin-top:10px"><table id="combo">
-      <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回未稅</th><th>含稅總價</th></tr></thead>
+      <thead><tr><th class="l">出發</th><th class="l">回程</th><th>晚數</th><th>去程</th><th>回程</th><th>來回未稅</th><th>含稅估</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </div>
@@ -127,7 +129,7 @@
   <div class="card">
     <h2>這條航線最便宜的 20 天</h2>
     <div class="scroll"><table id="best">
-      <thead id="best-head"><tr><th class="l">日期</th><th class="l">週</th><th>未稅</th><th>＋稅</th><th>含稅總價</th></tr></thead>
+      <thead id="best-head"><tr><th class="l">日期</th><th class="l">週</th><th>未稅</th><th>＋稅</th><th>含稅估</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </div>
@@ -135,7 +137,7 @@
   <div class="card">
     <h2>全航線最低價</h2>
     <div class="scroll"><table id="all">
-      <thead><tr><th class="l">航線</th><th>未稅</th><th>＋稅</th><th>含稅總價</th><th class="l">最便宜那天</th></tr></thead>
+      <thead><tr><th class="l">航線</th><th>未稅</th><th>＋稅</th><th>含稅估</th><th class="l">最便宜那天</th></tr></thead>
       <tbody></tbody>
     </table></div>
     <p class="msg" style="margin-top:10px">
@@ -146,7 +148,7 @@
   </div>
 </div>
 
-<script src="assets/shared.js?v=20260823"></script>
+<script src="assets/shared.js?v=20260903"></script>
 <script>
 (function(){
   "use strict";
@@ -258,8 +260,8 @@
     document.querySelectorAll("#modechips .chip[data-n]").forEach(function(b){
       b.setAttribute("aria-pressed", +b.dataset.n===st.nights); });
     $("best-head").innerHTML = rt
-      ? '<tr><th class="l">出發</th><th class="l">週</th><th class="l">回程</th><th>去程</th><th>回程</th><th>＋稅</th><th>含稅總價</th></tr>'
-      : '<tr><th class="l">日期</th><th class="l">週</th><th>未稅</th><th>＋稅</th><th>含稅總價</th></tr>';
+      ? '<tr><th class="l">出發</th><th class="l">週</th><th class="l">回程</th><th>去程</th><th>回程</th><th>＋稅</th><th>含稅估</th></tr>'
+      : '<tr><th class="l">日期</th><th class="l">週</th><th>未稅</th><th>＋稅</th><th>含稅估</th></tr>';
 
     var v=curView();
     if(!v){
@@ -315,13 +317,14 @@
         '<div class="cg">'+cells+"</div></div>";
     }).join("");
 
+    if(rt) findCombos();   // 切到來回就直接算（9/3 gemini review）
     document.querySelector("#best tbody").innerHTML=Object.keys(days)
       .sort(function(a,b){ return days[a]-days[b]; }).slice(0,20).map(function(d){
         var wd=new Date(d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
         var pr=days[d];
         if(rt){ var x=v.rt[d];
           return '<tr><td class="l n">'+esc(d)+'</td><td class="l'+we+'">'+WD[wd]+"</td>"+
-            '<td class="l n">'+esc(x.rd)+'</td>'+(x.ex?'<td class="n" colspan="2">官網來回價 ✓</td>':'<td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+"</td>")+
+            '<td class="l n">'+esc(x.rd)+'</td>'+(x.ex?'<td class="n" colspan="2"><span class="badge available">實價</span> 官網來回</td>':'<td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+"</td>")+
             '<td class="n">'+(tax==null?"未估":fmt(tax))+"</td>"+
             '<td class="n tot">'+(tax==null?"—":fmt(pr+tax))+"</td></tr>"; }
         return '<tr><td class="l n">'+esc(d)+'</td><td class="l'+we+'">'+WD[wd]+"</td>"+
@@ -346,8 +349,8 @@
     out.sort(function(a,b){ return a.t-b.t||a.d.localeCompare(b.d); });
     body.innerHTML = out.length ? out.slice(0,15).map(function(x){
       var wd=new Date(x.d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
-      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n\">"+esc(x.rd)+"</td>"+
-        '<td class="n">'+x.n+'</td>'+(x.ex?'<td class="n" colspan="2">官網來回價 ✓</td>':'<td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+"</td>")+
+      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n\">"+esc(x.rd)+"（"+WD[new Date(x.rd+"T00:00:00Z").getUTCDay()]+"）</td>"+
+        '<td class="n">'+x.n+'</td>'+(x.ex?'<td class="n" colspan="2"><span class="badge available">實價</span> 官網來回</td>':'<td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+"</td>")+
         '<td class="n">'+fmt(x.t)+'</td><td class="n tot">'+(tax==null?"—":fmt(x.t+tax))+"</td></tr>";
     }).join("") : '<tr><td colspan="7" class="l">這個範圍沒有可組合的日期</td></tr>';
   }
@@ -376,6 +379,7 @@
   function load(){
     api("GET","/api/hkexpress/prices",null,function(e,d){
       if(e){ toast("讀取失敗："+e,"err"); return; }
+      renderFresh("fresh", d.meta, d.updated, 26);
       NAMES=d.names||{}; CC=d.countries||{}; RTX={}; R={};
       (d.fares||[]).forEach(function(f){
         var k=f.origin+"-"+f.destination;
@@ -385,6 +389,7 @@
       Object.keys(R).forEach(function(k){ R[k].tax=estTax(k); });
       var all=[];
       Object.keys(R).forEach(function(k){ all=all.concat(Object.keys(R[k].days)); });
+      if(!all.length){ toast("還沒有掃描資料","err"); return; }   // 9/3 codex：空資料保護
       all.sort(); span.from=all[0]; span.to=all[all.length-1];
       if(!R[key()]){ var first=Object.keys(R)[0]; if(first){ var p=first.split("-"); st.origin=p[0]; st.dest=p[1]; } }
       renderAll(); render();

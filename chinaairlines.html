@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/shared.css?v=20260815">
+<link rel="stylesheet" href="assets/shared.css?v=20260903">
 <style>
   .pickrow{ display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-top:1px solid var(--border); }
   .pickrow:first-child{ border-top:0; }
@@ -59,12 +59,13 @@
 <h1>🇹🇼 華航價格日曆</h1>
 <p class="sub">華航台灣出發／抵達每日最低價 · 經濟艙含稅總價（單人單程） · 海外出發已換算台幣 · 快取價非即時，下訂以官網為準</p>
 <div class="nav">
-  <a href="index.html">✈️ 機位主頁</a>
-  <a href="tigerair.html">🐯 虎航票價</a>
-  <a href="starlux.html">✨ 星宇票價</a>
-  <a href="hotels.html">🏨 飯店房況</a>
-  <a href="airmacau.html">🇲🇴 澳航票價</a>
-  <a href="hkexpress.html">🛫 快運票價</a>
+  <a href="index.html">✈️ 機位</a>
+  <a href="tigerair.html">🐯 虎航</a>
+  <a href="starlux.html">✨ 星宇</a>
+  <a href="chinaairlines.html">🇹🇼 華航</a>
+  <a href="airmacau.html">🇲🇴 澳航</a>
+  <a href="hkexpress.html">🛫 快運</a>
+  <a href="hotels.html">🏨 飯店</a>
   <a href="rules.html">📖 規則庫</a>
 </div>
 
@@ -74,6 +75,7 @@
 </div>
 
 <div id="app" class="hidden">
+  <div class="hl" id="fresh"></div>
   <div class="card">
     <h2>選航線</h2>
     <div id="picker"></div>
@@ -134,7 +136,7 @@
   </div>
 </div>
 
-<script src="assets/shared.js?v=20260823"></script>
+<script src="assets/shared.js?v=20260903"></script>
 <script>
 (function(){
   "use strict";
@@ -227,6 +229,7 @@
     document.querySelectorAll("#modechips .chip[data-n]").forEach(function(b){
       b.setAttribute("aria-pressed", +b.dataset.n===st.nights); });
     var cur=curDays(), days=cur&&cur.days;
+    if(rt) findCombos();   // 切到來回就直接算（9/3 gemini review）
     var tb=document.querySelector("#best tbody");
     $("best-head").innerHTML = rt
       ? '<tr><th class="l">出發</th><th class="l">週</th><th class="l">回程</th><th>去程</th><th>回程</th><th>來回總價</th></tr>'
@@ -300,7 +303,7 @@
     out.sort(function(a,b){ return a.t-b.t||a.d.localeCompare(b.d); });
     body.innerHTML = out.length ? out.slice(0,15).map(function(x){
       var wd=new Date(x.d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
-      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n\">"+esc(x.rd)+"</td>"+
+      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n\">"+esc(x.rd)+"（"+WD[new Date(x.rd+"T00:00:00Z").getUTCDay()]+"）</td>"+
         '<td class="n">'+x.n+'</td><td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+'</td><td class="n tot">'+fmt(x.t)+"</td></tr>";
     }).join("") : '<tr><td colspan="6" class="l">這個範圍沒有可組合的日期</td></tr>';
   }
@@ -325,6 +328,7 @@
   function load(){
     api("GET","/api/chinaairlines/prices",null,function(e,d){
       if(e){ toast("讀取失敗："+e,"err"); return; }
+      renderFresh("fresh", d.meta, d.updated, 26);
       NAMES=d.names||{}; COUNTRY=d.countries||{}; R={}; RT={};
       (d.fares||[]).forEach(function(f){
         var k=f.origin+"-"+f.destination;

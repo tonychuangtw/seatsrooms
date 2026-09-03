@@ -16,6 +16,7 @@ import argparse, datetime, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(HERE))
 from scan import all_routes, daily_prices, load_tax  # noqa: E402
 from tgpush import send as tg  # noqa: E402
 

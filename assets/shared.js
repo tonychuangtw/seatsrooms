@@ -248,3 +248,31 @@ document.addEventListener("DOMContentLoaded",function(){
   f.appendChild(document.createTextNode(" · "));
   f.appendChild(a);
 });
+
+// 導覽高亮當前頁（各頁 nav 已統一成同一份 8 顆，2026-09-03）
+document.addEventListener("DOMContentLoaded",function(){
+  var here=(location.pathname.split("/").pop()||"index.html").toLowerCase();
+  document.querySelectorAll(".nav a").forEach(function(a){
+    var h=(a.getAttribute("href")||"").split("?")[0].toLowerCase();
+    if(h===here) a.classList.add("active");
+  });
+});
+// 掃描新鮮度列（2026-09-03 codex review：頁面看不出資料是不是過期）。
+// meta 來自 scan.py 旁邊的 <json>.meta.json（scannedAt／routes／ok／failed／staleFilled／missing），
+// 沒 meta 就退回 baseline.json 的 mtime。expectHours：超過這個小時數沒更新就轉黃。
+function renderFresh(id, meta, updatedIso, expectHours){
+  var el=document.getElementById(id); if(!el) return;
+  var lim=expectHours||26;
+  var ts=(meta&&meta.scannedAt)?new Date(meta.scannedAt):(updatedIso?new Date(updatedIso):null);
+  if(!ts||isNaN(ts.getTime())){ el.innerHTML='<span><i class="r"></i>沒有掃描資料</span>'; return; }
+  var ageH=(Date.now()-ts.getTime())/36e5, t=new Date(ts.getTime()+8*3600e3);
+  var lab=(t.getUTCMonth()+1)+"/"+t.getUTCDate()+" "+String(t.getUTCHours()).padStart(2,"0")+":"+String(t.getUTCMinutes()).padStart(2,"0");
+  var failed=(meta&&meta.failed)?meta.failed.length:0, missing=(meta&&meta.missing)?meta.missing.length:0,
+      stale=(meta&&meta.staleFilled)?meta.staleFilled.length:0;
+  var cls=missing?"r":((failed||ageH>lim)?"y":"g");
+  var parts=['<span><i class="'+cls+'"></i>最後掃描 '+lab+' 台北'+(ageH>lim?'（已 '+Math.round(ageH)+' 小時沒更新）':'')+'</span>'];
+  if(meta&&meta.routes!=null) parts.push('<span>航向 '+meta.ok+'/'+meta.routes+(stale?'（'+stale+' 條沿用上一份）':'')+'</span>');
+  if(missing) parts.push('<span style="color:var(--bad)">缺 '+meta.missing.join("、")+'</span>');
+  else if(failed) parts.push('<span style="color:var(--warn)">失敗 '+meta.failed.map(function(f){return f.route;}).join("、")+'</span>');
+  el.innerHTML=parts.join("");
+}

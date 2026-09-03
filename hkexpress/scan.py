@@ -90,7 +90,7 @@ def windows():
 
 def calendar(org, dest, retries=2):
     """一個航向的完整日曆（分段掃，去重取每日最低）：{date: 原幣價}＋幣別。"""
-    days, cur, empty_streak = {}, None, 0
+    days, cur, empty_streak, errs = {}, None, 0, 0
     for b, e in windows():
         body = {"application_code": "IBE",
                 "flights": [{"origin": org, "destination": dest,
@@ -105,6 +105,7 @@ def calendar(org, dest, retries=2):
                 break
             except Exception as ex:
                 if i == retries:
+                    errs += 1
                     print(f"  {org}-{dest} {b} 失敗：{str(ex)[:80]}", file=sys.stderr)
                 time.sleep(1.5 * (i + 1))
         time.sleep(GAP)
@@ -123,7 +124,7 @@ def calendar(org, dest, retries=2):
             if k not in days or x["price"] < days[k]:
                 days[k] = x["price"]
                 cur = x.get("currency_code") or cur
-    return days, (cur or "TWD")
+    return days, (cur or "TWD"), (errs > 0 and not days)   # 第三個值：全部視窗都失敗（≠ 沒這條航線）
 
 
 def route_map(refresh=False):
@@ -149,6 +150,7 @@ def main():
     ap.add_argument("--all", action="store_true", help="HKG⇄全部＋台灣三場⇄全部")
     ap.add_argument("--json", help="輸出 json 檔")
     ap.add_argument("--top", type=int, default=15)
+    ap.add_argument("--alert", action="store_true", help="有航向失敗就推 TG（排程用）")
     a = ap.parse_args()
 
     net = route_map()
@@ -167,10 +169,13 @@ def main():
         pairs = [("TPE", "HKG"), ("HKG", "TPE"), ("KHH", "HKG"),
                  ("HKG", "KHH"), ("RMQ", "HKG"), ("HKG", "RMQ")]
 
-    out, fails = [], 0
+    out, fails, failed = [], 0, []
     for org, dest in pairs:
-        days, cur = calendar(org, dest)
+        days, cur, err = calendar(org, dest)
         if not days:
+            if err:
+                fails += 1
+                failed.append({"route": f"{org}-{dest}", "error": "全部視窗請求失敗（見 stderr）"})
             continue
         rate = fx.get(cur)
         cc = COUNTRY.get(dest if org == "HKG" else org, "?")
@@ -195,8 +200,13 @@ def main():
         print(f"  {k:12s} {name:16s} {r['twd']:>7,}{orig}  {r['date']}")
 
     if a.json:
+        sys.path.insert(0, os.path.dirname(HERE))
+        from scanmeta import finish
+        rc = finish(a.json, out, pairs, failed, since=datetime.date.today().isoformat(),
+                    airline="快運", alert=a.alert, critical=("TPE-HKG", "HKG-TPE", "KHH-HKG", "HKG-KHH"))
         json.dump(out, open(a.json, "w"), ensure_ascii=False)
         print(f"\n→ {a.json}")
+        sys.exit(rc)
 
 
 if __name__ == "__main__":

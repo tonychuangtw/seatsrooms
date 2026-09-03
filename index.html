@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/shared.css?v=20260902">
+<link rel="stylesheet" href="assets/shared.css?v=20260903">
 <style>
   .badge.no_seats{ color:var(--bad); border-color:var(--bad); }
   .src-air{ color:var(--ok); } .src-sa{ color:var(--accent); }
@@ -83,7 +83,16 @@
 <body>
 <h1>✈️ 哩程機位監控</h1>
 <p class="sub">登入後看儀表板即時結果;新增/管理監控在各頁籤</p>
-<p style="margin:-6px 0 12px;display:flex;gap:8px;flex-wrap:wrap;"><a href="hotels.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">🏨 飯店房況監控 →</a><a href="tigerair.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">🐯 虎航票價 →</a><a href="starlux.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">✨ 星宇票價 →</a><a href="airmacau.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">🇲🇴 澳航票價 →</a><a href="hkexpress.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">🛫 快運票價 →</a><a href="chinaairlines.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">🇹🇼 華航票價 →</a><a href="rules.html" style="display:inline-block;padding:7px 13px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);text-decoration:none;font-size:0.86rem;font-weight:600;">📖 開票規則庫 →</a></p>
+<div class="nav">
+  <a href="index.html">✈️ 機位</a>
+  <a href="tigerair.html">🐯 虎航</a>
+  <a href="starlux.html">✨ 星宇</a>
+  <a href="chinaairlines.html">🇹🇼 華航</a>
+  <a href="airmacau.html">🇲🇴 澳航</a>
+  <a href="hkexpress.html">🛫 快運</a>
+  <a href="hotels.html">🏨 飯店</a>
+  <a href="rules.html">📖 規則庫</a>
+</div>
 
 <div id="signin-card" class="card">
   <p>用 Google 登入後管理監控需求(僅限 Tony 本人帳號)</p>
@@ -285,7 +294,7 @@
 <p class="foot">官網監控在 1800(camoufox 仿真人)定時掃描 · 結果每 30 分自動彙整更新 · 頁面每 5 分自動刷新</p>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="assets/shared.js?v=20260823"></script>
+<script src="assets/shared.js?v=20260903"></script>
 <script>
 (function () {
   "use strict";

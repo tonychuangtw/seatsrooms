@@ -109,6 +109,7 @@ def main():
     ap.add_argument("--rt", action="store_true",
                     help="抓台灣⇄澳門三條的來回矩陣（30 天視窗）寫 baseline-rt.json")
     ap.add_argument("--top", type=int, default=15)
+    ap.add_argument("--alert", action="store_true", help="有航向失敗就推 TG（排程用）")
     a = ap.parse_args()
 
     net = network()
@@ -141,12 +142,13 @@ def main():
         pairs = [("TPE", "MFM"), ("MFM", "TPE"), ("KHH", "MFM"),
                  ("MFM", "KHH"), ("RMQ", "MFM"), ("MFM", "RMQ")]
 
-    out, routes_found, fails = [], {}, 0
+    out, routes_found, fails, failed = [], {}, 0, []
     for org, dest in pairs:
         rows = calendar(org, dest)
         time.sleep(GAP)
         if rows is None:
             fails += 1
+            failed.append({"route": f"{org}-{dest}", "error": "calendar 失敗（見 stderr）"})
             continue
         if not rows:
             continue
@@ -175,8 +177,13 @@ def main():
         print(f"  {k:12s} {name:14s} {r['amount']:>7,}  {r['date']}")
 
     if a.json:
+        sys.path.insert(0, os.path.dirname(HERE))
+        from scanmeta import finish
+        rc = finish(a.json, out, pairs, failed, since=datetime.date.today().isoformat(),
+                    airline="澳航", alert=a.alert, critical=("TPE-MFM", "MFM-TPE", "KHH-MFM", "MFM-KHH"))
         json.dump(out, open(a.json, "w"), ensure_ascii=False)
         print(f"\n→ {a.json}")
+        sys.exit(rc)
 
 
 if __name__ == "__main__":

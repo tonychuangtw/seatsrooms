@@ -20,7 +20,7 @@
 import argparse, datetime, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(HERE))
 from tgpush import send as tg  # noqa: E402
 WATCH = os.path.join(HERE, "member-watch.json")
 STATE = os.path.join(HERE, "member-state.json")

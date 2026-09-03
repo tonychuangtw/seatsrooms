@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/shared.css?v=20260815">
+<link rel="stylesheet" href="assets/shared.css?v=20260903">
 <style>
   /* 航線挑選 */
   .pickrow{ display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-top:1px solid var(--border); }
@@ -57,18 +57,31 @@
   .we{ color:var(--warn); }
   .scroll{ overflow-x:auto; }
   .rtname{ color:var(--text2); font-size:0.78rem; margin-left:6px; }
+  /* 9/16 搶票模式卡（2026-09-03 codex/gemini review：Tony 盯的四個方向不該藏在選擇器＋長日曆裡） */
+  .promo{ border-color:var(--warn); }
+  .promo h2{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .promo h2 small{ font-weight:400; color:var(--text2); font-size:0.78rem; }
+  .promo .ptab td.l b{ font-size:0.92rem; }
+  .promo .fire{ color:var(--bad); font-weight:700; }
+  .promo .live{ color:var(--text2); font-size:0.76rem; white-space:normal; }
+  .promo .book{ font-weight:700; }
+  .promo .plan{ display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.8rem; color:var(--text2); margin:0 0 8px; }
+  .promo .plan b{ color:var(--text); }
+  .promo .link{ margin-top:8px; font-size:0.86rem; }
+  .promo .link a{ color:var(--accent); word-break:break-all; }
 </style>
 </head>
 <body>
 <h1>🐯 虎航價格日曆</h1>
 <p class="sub">台灣虎航全航線每日最低價 · 官網價是「單人未稅單程」,這裡同時給含稅總價</p>
 <div class="nav">
-  <a href="index.html">✈️ 機位主頁</a>
-  <a href="hotels.html">🏨 飯店房況</a>
-  <a href="starlux.html">✨ 星宇票價</a>
-  <a href="airmacau.html">🇲🇴 澳航票價</a>
-  <a href="hkexpress.html">🛫 快運票價</a>
-  <a href="chinaairlines.html">🇹🇼 華航票價</a>
+  <a href="index.html">✈️ 機位</a>
+  <a href="tigerair.html">🐯 虎航</a>
+  <a href="starlux.html">✨ 星宇</a>
+  <a href="chinaairlines.html">🇹🇼 華航</a>
+  <a href="airmacau.html">🇲🇴 澳航</a>
+  <a href="hkexpress.html">🛫 快運</a>
+  <a href="hotels.html">🏨 飯店</a>
   <a href="rules.html">📖 規則庫</a>
 </div>
 
@@ -78,6 +91,21 @@
 </div>
 
 <div id="app" class="hidden">
+  <div class="hl" id="fresh"></div>
+
+  <div class="card promo" id="promo-card">
+    <h2>🔥 9/16 週年慶搶票 <small>尊榮虎 9/16 10:00–23:59 未稅 112 起 · 全員 9/17 10:00–9/18 23:59 未稅 512 起 · 可訂 2026-09-16～2027-03-27</small></h2>
+    <div class="plan">
+      <span>盯的方向：<b>高雄⇄濟州</b>（全期間）、<b>高雄⇄札幌</b>（去 1/23 回 2/2）</span>
+      <span>匿名日曆每分鐘、全網每 5 分鐘、會員價每 12 分鐘自動掃，命中推 TG</span>
+    </div>
+    <div class="scroll"><table class="ptab" id="promo">
+      <thead><tr><th class="l">方向</th><th class="l">日期</th><th>未稅</th><th>＋稅</th><th>含稅</th><th class="l">會員查價（最近一次）</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="link" id="promo-link"></p>
+  </div>
+
   <div class="card">
     <h2>選航線</h2>
     <div id="picker"></div>
@@ -146,7 +174,7 @@
   </div>
 </div>
 
-<script src="assets/shared.js?v=20260823"></script>
+<script src="assets/shared.js?v=20260903"></script>
 <script>
 (function(){
   "use strict";
@@ -302,6 +330,7 @@
         '<div class="cg">'+cells+"</div></div>";
     }).join("");
 
+    if(rt) findCombos();   // 切到來回就直接算，不用再按「找」（9/3 gemini review）
     document.querySelector("#best tbody").innerHTML=Object.keys(days)
       .sort(function(a,b){ return days[a]-days[b]; }).slice(0,20).map(function(d){
         var wd=new Date(d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
@@ -331,7 +360,8 @@
     out.sort(function(a,b){ return a.t-b.t||a.d.localeCompare(b.d); });
     body.innerHTML = out.length ? out.slice(0,15).map(function(x){
       var wd=new Date(x.d+"T00:00:00Z").getUTCDay(), we=(wd===0||wd===6)?" we":"";
-      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n\">"+esc(x.rd)+"</td>"+
+      var rwd=new Date(x.rd+"T00:00:00Z").getUTCDay(), rwe=(rwd===0||rwd===6)?" we":"";
+      return '<tr><td class="l n'+we+'">'+esc(x.d)+"（"+WD[wd]+"）</td><td class=\"l n"+rwe+"\">"+esc(x.rd)+"（"+WD[rwd]+"）</td>"+
         '<td class="n">'+x.n+'</td><td class="n">'+fmt(x.g)+'</td><td class="n">'+fmt(x.r)+"</td>"+
         '<td class="n">'+fmt(x.t)+'</td><td class="n tot">'+(tax==null?"—":fmt(x.t+tax))+"</td></tr>";
     }).join("") : '<tr><td colspan="7" class="l">這個範圍沒有可組合的日期</td></tr>';
@@ -358,9 +388,43 @@
     }).join("");
   }
 
+  // 9/16 搶票模式：固定列 Tony 盯的方向（最低價那天＋指定目標日），配會員查價最近結果（剩餘座位）
+  var PROMO_ROWS=[
+    {k:"KHH-CJU"},{k:"CJU-KHH"},
+    {k:"KHH-CTS",date:"2027-01-23",tag:"目標日"},{k:"CTS-KHH",date:"2027-02-02",tag:"目標日"},
+    {k:"KHH-CTS"},{k:"CTS-KHH"},{k:"KHH-SDJ"},{k:"SDJ-KHH"}];
+  var LIVE={}, PROMO_URL=null, HEALTH=null;
+  function renderPromo(){
+    var body=document.querySelector("#promo tbody"), rows=[];
+    PROMO_ROWS.forEach(function(pr){
+      var r=R[pr.k]; if(!r) return;
+      var date=pr.date, price;
+      if(date){ price=r.days[date]; if(price===undefined) return; }
+      else { Object.keys(r.days).forEach(function(d){ if(price===undefined||r.days[d]<price){ price=r.days[d]; date=d; } }); if(price===undefined) return; }
+      var tax=r.tax, tot=tax==null?null:price+tax, pp=pr.k.split("-");
+      var lv=LIVE[pr.k+"|"+date], lvs="";
+      if(lv&&lv.total!=null) lvs=esc(lv.flight||"")+" 剩 "+esc(lv.seats!=null?lv.seats:"?")+" 位 · 含稅 "+fmt(lv.total)+"（"+esc(lv.at||"")+"）";
+      else if(lv&&lv.err) lvs="查價失敗："+esc(lv.err);
+      var wd=new Date(date+"T00:00:00Z").getUTCDay();
+      rows.push('<tr><td class="l"><b>'+esc(city(pp[0]))+" → "+esc(city(pp[1]))+'</b><span class="rtname">'+esc(pr.k)+(pr.tag?" · "+pr.tag:" · 最便宜")+'</span></td>'+
+        '<td class="l n">'+esc(date)+"（"+WD[wd]+"）</td>"+
+        '<td class="n'+(price<=700?" fire":"")+'">'+fmt(price)+(price<=700?" 🔥":"")+'</td>'+
+        '<td class="n">'+(tax==null?"未量":fmt(tax))+'</td><td class="n tot">'+(tot==null?"—":fmt(tot))+'</td>'+
+        '<td class="l live">'+(lvs||"—")+'</td></tr>');
+    });
+    body.innerHTML=rows.join("")||'<tr><td colspan="6" class="l">還沒有這些航線的資料</td></tr>';
+    var link=PROMO_URL
+      ? '促銷專屬連結：<a href="'+esc(PROMO_URL)+'" target="_blank" rel="noopener">'+esc(PROMO_URL)+'</a>'
+      : '訂票：<a href="https://booking.tigerairtw.com/zh-TW" target="_blank" rel="noopener">booking.tigerairtw.com</a>（一般搜尋頁不吃帶參數的深連結；9/16 公告的專屬連結出來後會顯示在這裡）';
+    if(HEALTH) link+='<br><span style="color:var(--text2);font-size:0.78rem">會員查價：上次 '+esc(HEALTH.lastRun||"?")+' 成功 '+esc(HEALTH.ok)+'/'+esc(HEALTH.jobs)+(HEALTH.fail?'，連續失敗 '+esc(HEALTH.fail)+' 輪':'')+'，JWT 到期 '+esc(HEALTH.jwtExp||"?")+'</span>';
+    $("promo-link").innerHTML=link;
+  }
+
   function load(){
     api("GET","/api/tigerair/prices",null,function(e,d){
       if(e){ toast("讀取失敗："+e,"err"); return; }
+      LIVE=d.live||{}; PROMO_URL=d.promoUrl||null; HEALTH=d.health||null;
+      renderFresh("fresh", d.meta, d.updated, 26);
       R={};
       (d.fares||[]).forEach(function(f){
         var k=f.origin+"-"+f.destination;
@@ -369,9 +433,10 @@
       });
       var all=[];
       Object.keys(R).forEach(function(k){ all=all.concat(Object.keys(R[k].days)); });
+      if(!all.length){ toast("還沒有掃描資料","err"); return; }   // 9/3 codex：空資料保護
       all.sort(); span.from=all[0]; span.to=all[all.length-1];
       if(!R[key()]){ var first=Object.keys(R)[0]; if(first){ var p=first.split("-"); st.origin=p[0]; st.dest=p[1]; } }
-      renderAll(); render();
+      renderPromo(); renderAll(); render();
       api("GET","/api/aircraft/map",null,function(e2,d2){ if(!e2&&d2){ ACMAP=d2; render(); } });
     });
   }

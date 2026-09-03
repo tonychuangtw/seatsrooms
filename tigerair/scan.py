@@ -132,28 +132,8 @@ def main():
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
         for r, res, err in ex.map(work, routes):
             if err:
-                failed.append({"route": f"{r[0]}-{r[1]}", "error": err})
+                failed.append((r, err))
             rows.extend(res)
-
-    # 9/3 codex：以前單一航線失敗就靜默變空、程式照樣 exit 0，排程會把「缺一條航線」的
-    # 資料當完整版發布。現在：失敗的航向拿上一份 --json 的資料補回來（標 stale: true），
-    # 補不到的才算真的缺，meta 檔記下失敗清單，需要時推 TG。
-    stale_filled, missing = [], []
-    if failed and a.json:
-        try:
-            prev = json.load(open(a.json))
-        except Exception:
-            prev = []
-        prev_by = {}
-        for x in prev:
-            prev_by.setdefault(f"{x['origin']}-{x['destination']}", []).append(x)
-        for f in failed:
-            old = [x for x in prev_by.get(f["route"], []) if x.get("date", "") >= a.since]
-            if old:
-                rows.extend({**x, "stale": True} for x in old)
-                stale_filled.append(f["route"])
-            else:
-                missing.append(f["route"])
 
     tax = load_tax()
     for r in rows:
@@ -187,33 +167,15 @@ def main():
         print(f"  {k:<10}{r['amount']:>8,} /{tot}  {r['date']}")
 
     if a.json:
+        sys.path.insert(0, os.path.dirname(HERE))
+        from scanmeta import finish
+        rc = finish(a.json, rows, [(o, d) for o, d, _ in routes],
+                    [{"route": f"{r[0]}-{r[1]}", "error": err} for r, err in failed],
+                    since=a.since, until=a.until, airline="虎航", alert=a.alert,
+                    critical=a.critical.split(",") if a.critical else ())
         json.dump(rows, open(a.json, "w"), ensure_ascii=False, indent=1)
         print(f"\n→ {a.json}")
-        now = datetime.datetime.now(datetime.timezone.utc)
-        meta = {"scannedAt": now.isoformat(timespec="seconds"),
-                "scannedAtTaipei": (now + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M"),
-                "since": a.since, "until": a.until,
-                "routes": len(routes), "ok": len(routes) - len(failed),
-                "failed": failed, "staleFilled": stale_filled, "missing": missing,
-                "rows": len(rows)}
-        json.dump(meta, open(os.path.splitext(a.json)[0] + ".meta.json", "w"),
-                  ensure_ascii=False, indent=1)
-
-    if failed:
-        crit = set(a.critical.split(",")) if a.critical else set()
-        bad_crit = [f["route"] for f in failed if f["route"] in crit]
-        msg = (f"{'🔴' if bad_crit else '⚠️'} 虎航掃描 {len(routes)} 航向有 {len(failed)} 條失敗"
-               + (f"（關鍵航線：{'、'.join(bad_crit)}）" if bad_crit else "")
-               + (f"\n用上一份補回：{'、'.join(stale_filled)}" if stale_filled else "")
-               + (f"\n沒有舊資料可補、頁面會缺：{'、'.join(missing)}" if missing else "")
-               + "\n" + "；".join(f"{f['route']} {f['error'][:60]}" for f in failed[:8]))
-        print(msg, file=sys.stderr)
-        if a.alert:
-            sys.path.insert(0, HERE)
-            from tgpush import send
-            send(msg)
-        if missing or bad_crit:
-            sys.exit(1)
+        sys.exit(rc)
 
 
 if __name__ == "__main__":
